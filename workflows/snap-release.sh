@@ -271,10 +271,18 @@ get_pkg_changes()
     eval "$out_text_var"='$prev_changes'
 }
 
+# $1: release branch
+# $2: workspace where we can store temporal files
+# $3: git repository
+# $4: name of build branch
+# $5: next version after the one we will release, to open development for it
 main()
 {
     local release_branch=$1
     local workspace=$2
+    local git_repo=$3
+    local build_branch=$4
+    local next_version=$5
     local snapcraft_yaml_path snap_name current_version version next_minor
     local changelog_version series track channel previous_version arch
     local build_d new_man_d
@@ -290,14 +298,14 @@ main()
     version=${current_version%%-dev}
     next_minor=$((${version##*-} + 1))
     # Next version can be forced externally to something else
-    if [ -z "$NEXT_VERSION" ]
-    then NEXT_VERSION=${version%%-*}-$next_minor
+    if [ -z "$next_version" ]
+    then next_version=${version%%-*}-$next_minor
     fi
     changelog_version=ChangeLog
 
     echo "Snap to be released: $snap_name"
     echo "Version to be released: $version"
-    echo "New development version: $NEXT_VERSION"
+    echo "New development version: $next_version"
 
     set_git_identity
 
@@ -310,16 +318,16 @@ main()
     previous_version="$(git describe --abbrev=0 --tags)" || true
 
     # Checkout a build branch
-    git checkout -b "$BUILD_BRANCH"
+    git checkout -b "$build_branch"
 
     # Set release version now so it gets reflected in the built snap
     set_version "$version" "$snapcraft_yaml_path"
 
     # We build from a temporary branch that we will delete on exit
-    git push origin "$BUILD_BRANCH"
+    git push origin "$build_branch"
     build_d="$workspace"
-    build_and_download_snaps "$snap_name" "$GIT_REPO" \
-                             "$BUILD_BRANCH" "$series" "$build_d"
+    build_and_download_snaps "$snap_name" "$git_repo" \
+                             "$build_branch" "$series" "$build_d"
 
     ## Inject changelog and update manifests
     mkdir -p manifests
@@ -353,7 +361,7 @@ main()
     spread google:
 
     # Commit changes to release branch (version in yaml and changelog)
-    open_next_version_development "$NEXT_VERSION" "$release_branch" \
+    open_next_version_development "$next_version" "$release_branch" \
                                   "$snapcraft_yaml_path"
     git tag -a -m "$version" "$version" HEAD
     git push origin "$version"
@@ -368,4 +376,5 @@ if [ $# -ne 2 ]; then
     printf "Usage: %s <release_branch> <workspace_dir>\n" "$0"
     exit 1
 fi
-main "$1" "$2"
+NEXT_VERSION=${NEXT_VERSION:-default}
+main "$1" "$2" "$GIT_REPO" "$BUILD_BRANCH" "$NEXT_VERSION"
