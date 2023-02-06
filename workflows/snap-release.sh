@@ -273,9 +273,11 @@ get_pkg_changes()
 
 main()
 {
-    local RELEASE_BRANCH=$1
+    local release_branch=$1
     local workspace=$2
-    local snapcraft_yaml_path
+    local snapcraft_yaml_path snap_name current_version version next_minor
+    local changelog_version series track channel previous_version arch
+    local build_d new_man_d
 
     snapcraft_yaml_path=$(get_snapcraft_yaml_path)
     if [ -z "$snapcraft_yaml_path" ]; then
@@ -283,25 +285,25 @@ main()
         exit 1
     fi
 
-    SNAP_NAME=$(yq .name "$snapcraft_yaml_path")
+    snap_name=$(yq .name "$snapcraft_yaml_path")
     current_version=$(yq .version "$snapcraft_yaml_path")
-    VERSION=${current_version%%-dev}
-    next_minor=$((${VERSION##*-} + 1))
+    version=${current_version%%-dev}
+    next_minor=$((${version##*-} + 1))
     # Next version can be forced externally to something else
     if [ -z "$NEXT_VERSION" ]
-    then NEXT_VERSION=${VERSION%%-*}-$next_minor
+    then NEXT_VERSION=${version%%-*}-$next_minor
     fi
-    CHANGELOG_FILE=ChangeLog
+    changelog_version=ChangeLog
 
-    echo "Snap to be released: $SNAP_NAME"
-    echo "Version to be released: $VERSION"
+    echo "Snap to be released: $snap_name"
+    echo "Version to be released: $version"
     echo "New development version: $NEXT_VERSION"
 
     set_git_identity
 
     series=$(get_series "$snapcraft_yaml_path")
 
-    track=$(get_track_from_branch "$RELEASE_BRANCH")
+    track=$(get_track_from_branch "$release_branch")
     channel="$track"/beta
 
     # latest tag is latest version
@@ -311,54 +313,54 @@ main()
     git checkout -b "$BUILD_BRANCH"
 
     # Set release version now so it gets reflected in the built snap
-    set_version "$VERSION" "$snapcraft_yaml_path"
+    set_version "$version" "$snapcraft_yaml_path"
 
     # We build from a temporary branch that we will delete on exit
     git push origin "$BUILD_BRANCH"
     build_d="$workspace"
-    build_and_download_snaps "$SNAP_NAME" "$GIT_REPO" \
+    build_and_download_snaps "$snap_name" "$GIT_REPO" \
                              "$BUILD_BRANCH" "$series" "$build_d"
 
     ## Inject changelog and update manifests
     mkdir -p manifests
     new_man_d="$workspace"/new_man
-    get_pkg_changes "$SNAP_NAME" "$channel" "$build_d" "$new_man_d" pkg_changes
+    get_pkg_changes "$snap_name" "$channel" "$build_d" "$new_man_d" pkg_changes
 
     # Now checkout to the release branch
-    git checkout "$RELEASE_BRANCH"
+    git checkout "$release_branch"
     # pkg_changes is set by get_pkg_changes, disable warning
     # shellcheck disable=SC2154
-    update_changelog "$SNAP_NAME" "$VERSION" "$previous_version" \
-                     "$CHANGELOG_FILE" "$pkg_changes"
+    update_changelog "$snap_name" "$version" "$previous_version" \
+                     "$changelog_version" "$pkg_changes"
     # Update manifests in repo
     git add manifests/manifest-*.yaml
-    git commit -m "Update manifests to $VERSION"
+    git commit -m "Update manifests to $version"
     # Put back version and create tag now
-    set_version "$VERSION" "$snapcraft_yaml_path"
+    set_version "$version" "$snapcraft_yaml_path"
 
-    for snap_p in "$build_d"/"$SNAP_NAME"_*.snap; do
+    for snap_p in "$build_d"/"$snap_name"_*.snap; do
         arch="${snap_p##*_}"
         arch="${arch%.snap}"
         modify_files_in_snap "$snap_p" \
-                             "$PWD/$CHANGELOG_FILE" \
-                             usr/share/doc/"$SNAP_NAME"/ChangeLog \
+                             "$PWD/$changelog_version" \
+                             usr/share/doc/"$snap_name"/ChangeLog \
                              manifests/manifest-"$arch".yaml snap/manifest.yaml \
                              "" snap/unstage.txt
     done
 
     # Run CI tests, using the just built snap
-    cp "$build_d"/"$SNAP_NAME"_*_amd64.snap .
+    cp "$build_d"/"$snap_name"_*_amd64.snap .
     spread google:
 
     # Commit changes to release branch (version in yaml and changelog)
-    open_next_version_development "$NEXT_VERSION" "$RELEASE_BRANCH" \
+    open_next_version_development "$NEXT_VERSION" "$release_branch" \
                                   "$snapcraft_yaml_path"
-    git tag -a -m "$VERSION" "$VERSION" HEAD
-    git push origin "$VERSION"
+    git tag -a -m "$version" "$version" HEAD
+    git push origin "$version"
 
     # Release to the beta and edge channels
     snap_store_login
-    push_and_release_snap "$build_d" "$SNAP_NAME" "$channel"
+    push_and_release_snap "$build_d" "$snap_name" "$channel"
 }
 
 if [ $# -ne 2 ]; then
@@ -366,4 +368,4 @@ if [ $# -ne 2 ]; then
     printf "Usage: %s <release_branch> <workspace_dir>\n" "$0"
     exit 1
 fi
-main "$1" "$"
+main "$1" "$2"
