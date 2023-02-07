@@ -31,7 +31,6 @@ CICD_SCRIPTS=${BASH_SOURCE[0]%%"$script_name"}./
 # Make sure we release all resources on shutdown
 finish()
 {
-    snap_store_logout || true
     git push origin :"$BUILD_BRANCH" || true
 }
 trap finish EXIT
@@ -365,10 +364,6 @@ main()
                                   "$snapcraft_yaml_path"
     git tag -a -m "$version" "$version" HEAD
     git push origin "$version"
-
-    # Release to the beta and edge channels
-    snap_store_login
-    push_and_release_snap "$build_d" "$snap_name" "$channel"
 }
 
 if [ $# -ne 2 ]; then
