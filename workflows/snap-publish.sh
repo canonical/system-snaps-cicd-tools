@@ -27,4 +27,6 @@ CICD_SCRIPTS=${BASH_SOURCE[0]%%"$script_name"}./
 build_d=$1
 snap_name=$2
 channel=$3
+
+sudo snap install --classic snapcraft
 push_and_release_snap "$build_d" "$snap_name" "$channel"
