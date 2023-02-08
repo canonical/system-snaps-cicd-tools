@@ -29,4 +29,6 @@ snap_name=$2
 channel=$3
 
 sudo snap install --classic snapcraft
-push_and_release_snap "$build_d" "$snap_name" "$channel"
+print "Releasing %s snap to %s\n" "$snap_name" "$channel"
+# XXX Comment for the moment until testing is finished
+#push_and_release_snap "$build_d" "$snap_name" "$channel"
