@@ -29,6 +29,14 @@ snap_name=$2
 channel=$3
 
 sudo snap install --classic snapcraft
-print "Releasing %s snap to %s\n" "$snap_name" "$channel"
+printf "Releasing %s snap to %s\n" "$snap_name" "$channel"
+
+# Check to avoid inadvertingly releasing by just specifying the risk -
+# full track/risk (with optional branch) is required
+if [[ "$channel" != */* ]]; then
+    printf "ERROR: no track specified in release channel %s\n" "$channel"
+    exit 1
+fi
+
 # XXX Comment for the moment until testing is finished
 #push_and_release_snap "$build_d" "$snap_name" "$channel"
