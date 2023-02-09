@@ -20,6 +20,7 @@ import sys
 import time
 import random
 import string
+import tempfile
 import urllib3
 import zlib
 
@@ -78,14 +79,14 @@ def main(argv):
     if 'series' in args:
         series = args['series']
 
-    #lp_app = se_utils.get_config_option("lp_app")
-    #lp_env = se_utils.get_config_option("lp_env")
-    #credential_store_path = se_utils.get_config_option('credential_store_path')
     lp_app = "launchpad-trigger"
     lp_env = "production"
-    credential_store_path = "/tmp/.launchpad.credentials"
-    launchpad = se_utils.get_launchpad(None, credential_store_path,
-                                       lp_app, lp_env)
+    creds = os.environ["LP_CREDENTIALS"]
+    with tempfile.NamedTemporaryFile() as credential_store_path:
+        credential_store_path.write(creds.encode("utf-8"))
+        credential_store_path.flush()
+        launchpad = se_utils.get_launchpad(None, credential_store_path.name,
+                                           lp_app, lp_env)
 
     team = launchpad.people['snappy-hwe-team']
     ubuntu = launchpad.distributions['ubuntu']
