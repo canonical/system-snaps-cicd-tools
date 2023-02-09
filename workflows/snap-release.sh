@@ -75,16 +75,13 @@ update_changelog()
         author=$(echo "$body" | grep "^Author:") || true
         author="${author#Author: *}"
         if [ -z "$author" ]; then
-            if [ -z "$merge_proposal" ]; then
-                author="unknown"
-            else
-                author=${merge_proposal#*~}
-                author=${author%%/*}
-            fi
+            # Probably github instead of launchpad
+            author=$(git log --format='%an <%ae>' "$i"^!)
+            merge_proposal=$(echo "$body" | grep "Merge pull request") || true
         fi
         # 'sed' removes leading blank lines first, then adds indentation
         description=$(echo "$body" | grep -v "^Author:\|^Merge" | \
-                        sed '/./,$!d' | sed '2,$s/^/    /') || true
+                        sed '/./,$!d' | sed '3,$s/^/    /') || true
         if [ -z "$description" ]; then
             description="See more information in merge proposal"
         fi
