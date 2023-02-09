@@ -19,6 +19,8 @@ runs:
         repository: snapcore/system-snaps-cicd-tools
         ref: main
         path: cicd
+        # We need the full history to create the changelog
+        fetch-depth: 0
     - name: Release
       run: |
         printf "Releasing from %s\n" "${{ inputs.branch }}"
