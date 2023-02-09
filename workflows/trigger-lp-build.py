@@ -82,6 +82,9 @@ def main(argv):
     lp_app = "launchpad-trigger"
     lp_env = "production"
     creds = os.environ["LP_CREDENTIALS"]
+    if creds == "":
+        print("ERROR: LP_CREDENTIALS is empty")
+        sys.exit(1)
     with tempfile.NamedTemporaryFile() as credential_store_path:
         credential_store_path.write(creds.encode("utf-8"))
         credential_store_path.flush()
