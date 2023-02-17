@@ -6,31 +6,33 @@ runs:
   using: "composite"
   steps:
     - name: Cleanup job workspace
+      shell: bash
       run: |
           rm -rf "${{ github.workspace }}"
           mkdir "${{ github.workspace }}"
     - name: Checking out
       uses: actions/checkout@v3
       with:
-        ref: ${{ inputs.branch }}
+        ref: ${{ github.ref_name }}
+        # We need the full history to create the changelog
+        fetch-depth: 0
     - name: Checking out CICD scripts
       uses: actions/checkout@v3
       with:
         repository: snapcore/system-snaps-cicd-tools
         ref: main
         path: cicd
-        # We need the full history to create the changelog
-        fetch-depth: 0
     - name: Release
+      shell: bash
       run: |
-        printf "Releasing from %s\n" "${{ inputs.branch }}"
+        printf "Releasing from %s\n" "${{ github.ref_name }}"
         # TODO better probably to have a local install
         mkdir -p ~/bin
         wget -q https://github.com/mikefarah/yq/releases/download/v4.30.8/yq_linux_amd64.tar.gz \
             -O - | tar xz
         mv yq_linux_amd64 ~/bin/yq
         export PATH=$PATH:~/bin/
-        ./cicd/workflows/snap-release.sh "${{ inputs.branch }}" "${{ runner.temp }}"
+        ./cicd/workflows/snap-release.sh "${{ github.ref_name }}" "${{ runner.temp }}"
         for s in "${{ runner.temp }}"/*_*.snap; do
             s=${s##*/}
             SNAP_NAME=${s%%_*}
@@ -42,3 +44,10 @@ runs:
       with:
         name: ${{ env.SNAP_NAME }}-snaps
         path: ${{ runner.temp }}/${{ env.SNAP_NAME }}_*.snap
+    - name: Publish the snaps to beta channel
+      shell: bash
+      run: |
+        ref=${{ github.ref_name }}
+        track=${ref##*-}
+        ./cicd/workflows/snap-publish.sh "${{ runner.temp }}" \
+            ${{ env.SNAP_NAME }} "$track"/beta
