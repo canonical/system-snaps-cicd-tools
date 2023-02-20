@@ -37,6 +37,5 @@ if [[ "$channel" != */* ]]; then
     exit 1
 fi
 
-# XXX Comment for the moment until testing is finished
 snapcraft whoami
 push_and_release_snap "$build_d" "$snap_name" "$channel"
