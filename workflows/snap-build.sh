@@ -18,7 +18,11 @@ set -exu
 
 # Used external variables
 REPOSITORY=$GITHUB_REPOSITORY
+# GITHUB_HEAD_REF set only for PRs, otherwise use GITHUB_REF_NAME
 BRANCH=$GITHUB_HEAD_REF
+if [ -z "$BRANCH" ]; then
+    BRANCH=$GITHUB_REF_NAME
+fi
 
 # Find the scripts folder
 script_name=${BASH_SOURCE[0]##*/}
