@@ -1,0 +1,62 @@
+name: 'PublishToEdgeSystemSnap'
+description: 'Publish system snap to edge channel'
+author: 'Alfonso Sanchez-Beato'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Cleanup job workspace
+      shell: bash
+      run: |
+        rm -rf "${{ github.workspace }}"
+        mkdir "${{ github.workspace }}"
+    - name: Checking out
+      uses: actions/checkout@v3
+    - name: Checking out CICD scripts
+      uses: actions/checkout@v3
+      with:
+        repository: snapcore/system-snaps-cicd-tools
+        ref: main
+        path: cicd
+    - name: Build snap
+      shell: bash
+      run: |
+        # We are inside of the checked out repo
+        ./cicd/workflows/snap-build.sh "${{ runner.temp }}"
+        for s in "${{ runner.temp }}"/*_*.snap; do
+            s=${s##*/}
+            SNAP_NAME=${s%%_*}
+            break
+        done
+        echo "SNAP_NAME=$SNAP_NAME" >> $GITHUB_ENV
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ env.SNAP_NAME }}-snaps
+        path: ${{ runner.temp }}/${{ env.SNAP_NAME }}_*.snap
+    - name: Run spread tests
+      shell: bash
+      run: |
+        printf "Running spread tests\n"
+        # TODO tests for other archs?
+        mv "${{ runner.temp }}"/${{ env.SNAP_NAME }}_*_amd64.snap .
+        spread google:
+    - name: Discard spread workers
+      shell: bash
+      if: always()
+      run: |
+        shopt -s nullglob
+        for r in .spread-reuse.*.yaml; do
+            spread -discard -reuse-pid="$(printf "$r\n" | grep -o -E '[0-9]+')"
+        done
+    - name: Publish the snaps to edge channel
+      shell: bash
+      run: |
+        ref=${{ github.ref_name }}
+        track=${ref##*-}
+        if [ -z "$track" ]; then
+            printf "ERROR: no track has been specified\n"
+            exit 1
+        fi
+        ./cicd/workflows/snap-publish.sh "${{ runner.temp }}" \
+            ${{ env.SNAP_NAME }} "$track"/edge
