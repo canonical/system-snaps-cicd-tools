@@ -39,7 +39,7 @@ runs:
       run: |
         printf "Running spread tests\n"
         # TODO tests for other archs?
-        mv "${{ runner.temp }}"/${{ env.SNAP_NAME }}_*_amd64.snap .
+        cp "${{ runner.temp }}"/${{ env.SNAP_NAME }}_*_amd64.snap .
         spread google:
     - name: Discard spread workers
       shell: bash
