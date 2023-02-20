@@ -49,5 +49,9 @@ runs:
       run: |
         ref=${{ github.ref_name }}
         track=${ref##*-}
+        if [ -z "$track" ]; then
+            printf "ERROR: no track has been specified\n"
+            exit 1
+        fi
         ./cicd/workflows/snap-publish.sh "${{ runner.temp }}" \
             ${{ env.SNAP_NAME }} "$track"/beta
