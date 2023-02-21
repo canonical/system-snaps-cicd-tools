@@ -258,7 +258,7 @@ EOF
     # using symbolic names requires test:test have the same ids
     # inside and outside which is a pain (see 12345 above), but
     # using the ids directly is the wrong kind of fragile
-    chown --verbose test:test /mnt/user-data/test
+    ##chown --verbose test:test /mnt/user-data/test
     chown --verbose ubuntu:ubuntu /mnt/user-data/ubuntu
 
     # we do what sync-dirs is normally doing on boot, but because
