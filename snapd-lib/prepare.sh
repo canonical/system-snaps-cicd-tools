@@ -319,9 +319,11 @@ setup_reflash_magic() {
     journalctl -u snapd
     snap model --verbose
     # remove the above debug lines once the mentioned bug is fixed
-    snap install "--channel=${CORE_CHANNEL}" "$core_name"
+    #snap install "--channel=${CORE_CHANNEL}" "$core_name"
+    pwd
+    snap download "--channel=${CORE_CHANNEL}" "$core_name"
     UNPACK_DIR="/tmp/$core_name-snap"
-    unsquashfs -no-progress -d "$UNPACK_DIR" /var/lib/snapd/snaps/${core_name}_*.snap
+    unsquashfs -no-progress -d "$UNPACK_DIR" ${core_name}_*.snap
 
     if os.query is-core16; then
         # the new ubuntu-image expects mkfs to support -d option, which was not
