@@ -83,6 +83,22 @@ disable_refreshes() {
     snap remove --purge jq-core22
 }
 
+repack_snapd_snap_with_deb_content() {
+    local TARGET="$1"
+
+    local UNPACK_DIR="/tmp/snapd-unpack"
+    unsquashfs -no-progress -d "$UNPACK_DIR" snapd_*.snap
+    # clean snap apparmor.d to ensure we put the right snap-confine apparmor
+    # file in place. Its called usr.lib.snapd.snap-confine on 14.04 but
+    # usr.lib.snapd.snap-confine.real everywhere else
+    rm -f "$UNPACK_DIR"/etc/apparmor.d/*
+
+    dpkg-deb -x "$SPREAD_PATH"/../snapd_*.deb "$UNPACK_DIR"
+    cp /usr/lib/snapd/info "$UNPACK_DIR"/usr/lib/snapd
+    snap pack "$UNPACK_DIR" "$TARGET"
+    rm -rf "$UNPACK_DIR"
+}
+
 repack_snapd_snap_with_run_mode_firstboot_tweaks() {
     local TARGET="$1"
 
@@ -334,6 +350,7 @@ setup_reflash_magic() {
     export UBUNTU_IMAGE_SNAP_CMD="$IMAGE_HOME/snap"
 
     if os.query is-core18; then
+        repack_snapd_snap_with_deb_content "$IMAGE_HOME"
         cp "$TESTSLIB/assertions/ubuntu-core-18-amd64.model" "$IMAGE_HOME/pc.model"
     elif os.query is-core20; then
         repack_snapd_snap_with_run_mode_firstboot_tweaks "$IMAGE_HOME"
@@ -479,6 +496,23 @@ setup_reflash_magic() {
         LOOP_PARTITION=2
     else
         LOOP_PARTITION=3
+    fi
+
+    # expand the uc16 and uc18 images a little bit (400M) as it currently will
+    # run out of space easily from local spread runs if there are extra files in
+    # the project not included in the git ignore and spread ignore, etc.
+    if ! (os.query is-core20 || os.query is-core22); then
+        # grow the image by 400M
+        truncate --size=+400M "$IMAGE_HOME/$IMAGE"
+        # fix the GPT table because old versions of parted complain about this 
+        # and refuse to properly run the next command unless the GPT table is 
+        # updated
+        # this command moves the backup gpt partition to the end of the disk,
+        # which is sensible since we've just resized the backing storage
+        sgdisk "$IMAGE_HOME/$IMAGE" -e
+
+        # resize the partition to go to the end of the disk
+        parted -s "$IMAGE_HOME/$IMAGE" resizepart ${LOOP_PARTITION} "100%"
     fi
 
     # mount fresh image and add all our SPREAD_PROJECT data
