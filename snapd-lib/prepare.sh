@@ -83,18 +83,13 @@ disable_refreshes() {
     snap remove --purge jq-core22
 }
 
-repack_snapd_snap_with_deb_content() {
+repack_snapd_snap() {
     local TARGET="$1"
 
     local UNPACK_DIR="/tmp/snapd-unpack"
     unsquashfs -no-progress -d "$UNPACK_DIR" snapd_*.snap
-    # clean snap apparmor.d to ensure we put the right snap-confine apparmor
-    # file in place. Its called usr.lib.snapd.snap-confine on 14.04 but
-    # usr.lib.snapd.snap-confine.real everywhere else
-    rm -f "$UNPACK_DIR"/etc/apparmor.d/*
 
-    dpkg-deb -x "$SPREAD_PATH"/../snapd_*.deb "$UNPACK_DIR"
-    cp /usr/lib/snapd/info "$UNPACK_DIR"/usr/lib/snapd
+    touch "$UNPACK_DIR"/repacked
     snap pack "$UNPACK_DIR" "$TARGET"
     rm -rf "$UNPACK_DIR"
 }
@@ -350,7 +345,7 @@ setup_reflash_magic() {
     export UBUNTU_IMAGE_SNAP_CMD="$IMAGE_HOME/snap"
 
     if os.query is-core18; then
-        repack_snapd_snap_with_deb_content "$IMAGE_HOME"
+        repack_snapd_snap "$IMAGE_HOME"
         cp "$TESTSLIB/assertions/ubuntu-core-18-amd64.model" "$IMAGE_HOME/pc.model"
     elif os.query is-core20; then
         repack_snapd_snap_with_run_mode_firstboot_tweaks "$IMAGE_HOME"
