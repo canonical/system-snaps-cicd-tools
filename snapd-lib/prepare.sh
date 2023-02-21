@@ -178,6 +178,7 @@ setup_core_for_testing_by_modify_writable() {
     # create test user and ubuntu user inside the writable partition
     # so that we can use a stock core in tests
     mkdir -p /mnt/user-data/test
+    mkdir -p /mnt/user-data/ubuntu
 
     # create test user, see the comment in spread.yaml about 12345
     mkdir -p /mnt/system-data/etc/sudoers.d/
@@ -258,6 +259,7 @@ EOF
     # inside and outside which is a pain (see 12345 above), but
     # using the ids directly is the wrong kind of fragile
     chown --verbose test:test /mnt/user-data/test
+    chown --verbose ubuntu:ubuntu /mnt/user-data/ubuntu
 
     # we do what sync-dirs is normally doing on boot, but because
     # we have subdirs/files in /etc/systemd/system (created below)
@@ -546,7 +548,7 @@ setup_reflash_magic() {
           --exclude /gopath/bin/govendor \
           --exclude /gopath/pkg/ \
           --include core/ \
-          /home/gopath /mnt/user-data/
+          "$PROJECT_PATH" /mnt/user-data/
     elif os.query is-core20 || os.query is-core22; then
         # prepare passwd for run-mode-overlay-data
 
