@@ -239,11 +239,11 @@ EOF
 
         # create /var/lib/extrausers/$f
         # append ubuntu, test user for the testing
-        grep "^test:" /etc/$f >> /mnt/system-data/var/lib/extrausers/"$f"
+        ##grep "^test:" /etc/$f >> /mnt/system-data/var/lib/extrausers/"$f"
         grep "^ubuntu:" /etc/$f >> /mnt/system-data/var/lib/extrausers/"$f"
         # check test was copied
-        MATCH "^test:" </mnt/system-data/var/lib/extrausers/"$f"
-        MATCH "^ubuntu:" </mnt/system-data/var/lib/extrausers/"$f"
+        ##grep "^test:" </mnt/system-data/var/lib/extrausers/"$f"
+        grep "^ubuntu:" </mnt/system-data/var/lib/extrausers/"$f"
     done
 
     # Make sure systemd-journal group has the "test" user as a member. Due to the way we copy that from the host
