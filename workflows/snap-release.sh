@@ -359,7 +359,8 @@ main()
     # Commit changes to release branch (version in yaml and changelog)
     open_next_version_development "$next_version" "$release_branch" \
                                   "$snapcraft_yaml_path"
-    git tag -a -m "$version" "$version" HEAD
+    tag=${version}_${release_branch}
+    git tag -a -m "$tag" "$tag" HEAD
     git push origin "$version"
 }
 
