@@ -361,7 +361,7 @@ main()
                                   "$snapcraft_yaml_path"
     tag=${version}_${release_branch}
     git tag -a -m "$tag" "$tag" HEAD
-    git push origin "$version"
+    git push origin "$tag"
 }
 
 if [ $# -ne 2 ]; then
