@@ -113,7 +113,7 @@ mac_to_ipv6() {
     echo "$ipv6_address"
 }
 
-# Creates an AP using wifi-ap
+# Creates an AP using NM on wlan0
 # $1: SSID name
 # $2: Passphrase. If present, AP will use WPA2, otherwise it will be open.
 create_ap() {
@@ -122,30 +122,25 @@ create_ap() {
         return 1
     fi
 
-    snap install wifi-ap
-    # wifi-ap needs a bit of time to settle down
-    repeat_until_done 'wifi-ap.status | MATCH "ap.active: true"' 0.5
-
-    /snap/bin/wifi-ap.config set wifi.interface=wlan0
-    /snap/bin/wifi-ap.config set wifi.ssid="$1"
     if [ $# -ge 2 ]; then
-        /snap/bin/wifi-ap.config set wifi.security=wpa2
-        /snap/bin/wifi-ap.config set wifi.security-passphrase="$2"
+        # The NM system connection is named Hotspot by default
+        network-manager.nmcli d wifi hotspot ifname wlan0 ssid "$1" password "$2"
     else
-        /snap/bin/wifi-ap.config set wifi.security=open
+        # Open connection
+        network-manager.nmcli c add type wifi ifname wlan0 con-name "Hotspot" \
+                              autoconnect yes wifi.mode ap wifi.ssid "$1" \
+                              ipv4.method shared ipv6.method shared
     fi
 
-    # NM some times still detects the wifi as WPA2 instead of open, so we need
-    # to re-start to force it to refresh. See LP: #1704085. Before that, we have
-    # to wait to make sure the AP sends the beacon frames so wpa_supplicant
-    # detects the AP changes and reports the right environment to the new NM
-    # instance.
+    # Wait to make sure the AP sends the beacon frames so wpa_supplicant
+    # detects the AP changes and reports the right environment to NM.
     sleep 30
-
-    systemctl restart snap.network-manager.networkmanager.service
-    repeat_until_done "busctl status org.freedesktop.NetworkManager &> /dev/null" 0.5
-    repeat_until_done "network-manager.nmcli d wifi | MATCH $1" 5
 }
+
+remove_ap() {
+    network-manager.nmcli c del "Hotspot"
+}
+
 
 # $1 instruction to execute repeatedly until complete or max times
 # $2 sleep time between retries. Default 1sec
