@@ -276,6 +276,26 @@ def main(argv):
     # directory so that the caller can reuse them.
     if len(successful):
         for success in successful:
+            # Print build logs only if there were no failures, to avoid
+            # too much noise.
+            if len(failures) == 0:
+                try:
+                    response = snap.getBuildSummaries(build_ids=[success])
+                    build_summary = response["builds"][success]
+                    if 'build_log_url' in build_summary:
+                        buildlog = build_summary['build_log_url']
+                        print("INFO: {} snap build at {} successful "
+                              "for id: {} log: {}".
+                              format(args["snap"], stamp, success, buildlog))
+                        if ephemeral_build and buildlog is not None:
+                            log_gz = url_pool.request('GET', buildlog)
+                            log_data = zlib.decompress(log_gz.data,
+                                                       16+zlib.MAX_WBITS)
+                            print(log_data.decode("utf-8"))
+                except Exception as ex:
+                    print("Could not get build summary for {} "
+                          "(was there an LP timeout?): {}".format(success, ex))
+
             try:
                 snap_build = launchpad.load(triggered_build_urls[success])
                 urls = snap_build.getFileUrls()
