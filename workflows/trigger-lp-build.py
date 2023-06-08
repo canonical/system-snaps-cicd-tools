@@ -212,13 +212,12 @@ def main(argv):
         tmp_builds = triggered_builds[:]
         for build in tmp_builds:
             try:
-                response = snap.getBuildSummariesForSnapBuildIds(
-                    snap_build_ids=[build])
+                response = snap.getBuildSummaries(build_ids=[build])
             except Exception as ex:
                 print("Could not get response for {} "
                       "(was there an LP timeout?): {}".format(build, ex))
                 continue
-            status = response[build]['status']
+            status = response["builds"][build]["status"]
             if status == "FULLYBUILT":
                 successful.append(build)
                 triggered_builds.remove(build)
@@ -239,19 +238,18 @@ def main(argv):
     if len(failures):
         for failure in failures:
             try:
-                response = snap.getBuildSummariesForSnapBuildIds(
-                    snap_build_ids=[failure])
+                response = snap.getBuildSummaries(build_ids=[failure])
             except Exception as ex:
                 print("Could not get failure data for {} "
-                      "(was there an LP timeout?): {}".format(build, ex))
+                      "(was there an LP timeout?): {}".format(failure, ex))
                 continue
 
-            if failure not in response:
+            if failure not in response["builds"]:
                 print("Launchpad didn't returned us the snap build "
                       "summary we ask it for!?")
                 continue
 
-            build_summary = response[failure]
+            build_summary = response["builds"][failure]
             arch = 'unknown'
             buildlog = None
             if 'build_log_url' in build_summary:
