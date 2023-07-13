@@ -725,12 +725,7 @@ nested_create_core_vm() {
             # download the ubuntu-core image from $CUSTOM_IMAGE_URL
             nested_download_image "$NESTED_CUSTOM_IMAGE_URL" "$IMAGE_NAME"
         else
-            # create the ubuntu-core image
-            local UBUNTU_IMAGE="$GOHOME"/bin/ubuntu-image
-            if os.query is-xenial; then
-                # ubuntu-image on 16.04 needs to be installed from a snap
-                UBUNTU_IMAGE=/snap/bin/ubuntu-image
-            fi
+            UBUNTU_IMAGE=/snap/bin/ubuntu-image
 
             if [ "$NESTED_BUILD_SNAPD_FROM_CURRENT" = "true" ]; then
                 nested_prepare_snapd

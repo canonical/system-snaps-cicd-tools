@@ -477,11 +477,7 @@ setup_reflash_magic() {
 
         EXTRA_FUNDAMENTAL="$EXTRA_FUNDAMENTAL --snap ${IMAGE_HOME}/${BASE}.snap"
     fi
-    local UBUNTU_IMAGE="$LOCAL_BIN"/ubuntu-image
-    if os.query is-core16; then
-        # ubuntu-image on 16.04 needs to be installed from a snap
-        UBUNTU_IMAGE=/snap/bin/ubuntu-image
-    fi
+    UBUNTU_IMAGE=/snap/bin/ubuntu-image
     # shellcheck disable=SC2086
     "$UBUNTU_IMAGE" snap \
                     -w "$IMAGE_HOME" "$IMAGE_HOME/pc.model" \
