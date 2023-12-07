@@ -135,7 +135,7 @@ modify_files_in_snap()
 {
     local snap_p=$1
     shift 1
-    local fs_d dest_d user_group i
+    local fs_d dest_d i
 
     fs_d=squashfs
     unsquashfs -d "$fs_d" "$snap_p"
