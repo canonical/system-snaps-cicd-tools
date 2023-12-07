@@ -173,7 +173,7 @@ def main(argv):
     triggered_builds = []
     triggered_build_urls = {}
     valid_arches = ['armhf', 'i386', 'amd64', 'arm64',
-                    's390x', 'powerpc', 'ppc64el']
+                    's390x', 'powerpc', 'ppc64el', 'riscv64']
     for build_arch in arches:
         # sometimes we see error such as "u'Unknown architecture lpia for
         # ubuntu xenial'" and in order to workaround let's validate the arches

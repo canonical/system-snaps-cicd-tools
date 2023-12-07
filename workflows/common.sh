@@ -109,9 +109,10 @@ build_and_download_snaps()
     # Starting with core20/focal, i386 is not supported
     if [ "$series" = xenial ] || [ "$series" = bionic ]; then
         archs=i386,amd64,armhf,arm64
-    else
-        # TODO riscv64?
+    elif [ "$series" = focal ]; then
         archs=amd64,armhf,arm64
+    else
+        archs=amd64,armhf,arm64,riscv64
     fi
 
     # Build snap without publishing it to get the new manifest.
