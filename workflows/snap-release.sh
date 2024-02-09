@@ -133,7 +133,8 @@ get_old_manifest()
              snap download --channel="$channel" "$snap_n"; then
             # First time we release for this track?
             # Try with "previous" track to get good history
-            if [ "${channel%%/*}" -gt 20 ]
+            track=${channel%%/*}
+            if [ "$track" -gt 20 ]
             then track=$((track - 2))
             else
                 if [ "$snap_n" = network-manager ] || [ "$snap_n" = modem-manager ]
@@ -141,8 +142,12 @@ get_old_manifest()
                 else track=latest
                 fi
             fi
-            UBUNTU_STORE_ARCH="$arch" \
-                             snap download --channel="$track/${channel#*/}" "$snap_n"
+            if ! UBUNTU_STORE_ARCH="$arch" \
+                 snap download --channel="$track/${channel#*/}" "$snap_n"; then
+                # Last try with a different arch
+                UBUNTU_STORE_ARCH=amd64 \
+                                 snap download --channel="$channel" "$snap_n"
+            fi
         fi
         unsquashfs "$snap_n"_*.snap snap/manifest.yaml
     )
