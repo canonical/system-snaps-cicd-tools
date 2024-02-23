@@ -2,6 +2,13 @@ name: 'TestSystemSnap'
 description: 'Build and test a system snap'
 author: 'Alfonso Sanchez-Beato'
 
+inputs:
+  architectures:
+    description: Comma separated list of architectures to override the default
+    required: false
+    type: string
+    default: ""
+
 runs:
   using: "composite"
   steps:
@@ -20,6 +27,8 @@ runs:
         path: cicd
     - name: Build snap
       shell: bash
+      env:
+        BUILD_ARCHITECTURES: ${{ inputs.architectures }}
       run: |
         # We are inside of the checked out repo
         ./cicd/workflows/snap-build.sh "${{ runner.temp }}"
