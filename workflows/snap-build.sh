@@ -53,12 +53,16 @@ main()
 
     build_and_download_snaps "$snap_name" \
                              https://github.com/"$REPOSITORY".git \
-                             "$BRANCH" "$series" "$build_d"
+                             "$BRANCH" "$series" "$build_d" \
+                             "${BUILD_ARCHITECTURES-}"
 }
 
-if [ $# -ne 1 ]; then
+if [ $# -ne 1 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
     printf "Wrong number of arguments.\n"
     printf "Usage: %s <build_dir>\n" "$0"
+    printf "Environment\n"
+    printf "   - BUILD_ARCHITECTURES - override build architectures\n"
+    printf "\n"
     exit 1
 fi
 main "$1"
