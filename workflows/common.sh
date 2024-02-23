@@ -220,15 +220,13 @@ get_series()
 {
     local base
     base=$(grep -oP '^base:[[:space:]]+core\K\w+' "$1") || true
-    if [ "$base" -eq 22 ]; then
-        printf jammy
-    elif [ "$base" -eq 20 ]; then
-        printf focal
-    elif [ "$base" -eq 18 ]; then
-        printf bionic
-    else
-        printf xenial
-    fi
+    case "$base" in
+        24) printf noble ;;
+        22) printf jammy ;;
+        20) printf focal ;;
+        18) printf bionic ;;
+        *)  printf xenial ;;
+    esac
 }
 
 # Get track from branch, assuming it is of the form <name>-<track>
