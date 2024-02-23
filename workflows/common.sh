@@ -98,6 +98,7 @@
 # $3: release branch
 # $4: ubuntu series
 # $5: results folder
+# $6: architectures to build for (if empty then default for a given series will be used)
 build_and_download_snaps()
 {
     local snap_n=$1
@@ -105,14 +106,20 @@ build_and_download_snaps()
     local release_br=$3
     local series=$4
     local results_d=$5
+    local build_architectures=${6-}
 
     # Starting with core20/focal, i386 is not supported
-    if [ "$series" = xenial ] || [ "$series" = bionic ]; then
-        archs=i386,amd64,armhf,arm64
-    elif [ "$series" = focal ]; then
-        archs=amd64,armhf,arm64
+    if [ -z "$build_architectures" ]; then
+        if [ "$series" = xenial ] || [ "$series" = bionic ]; then
+            archs=i386,amd64,armhf,arm64
+        elif [ "$series" = focal ]; then
+            archs=amd64,armhf,arm64
+        else
+            archs=amd64,armhf,arm64,riscv64
+        fi
     else
-        archs=amd64,armhf,arm64,riscv64
+        echo "Overriding build architectures to $build_architectures" >&2
+        archs="$build_architectures"
     fi
 
     # Build snap without publishing it to get the new manifest.
