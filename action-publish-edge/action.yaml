@@ -2,6 +2,23 @@ name: 'PublishToEdgeSystemSnap'
 description: 'Publish system snap to edge channel'
 author: 'Alfonso Sanchez-Beato'
 
+inputs:
+  architectures:
+    description: Comma separated list of architectures to override the default
+    required: false
+    type: string
+    default: ""
+  run_tests:
+    description: Run spread tests
+    required: false
+    type: boolean
+    default: true
+  spread_suites:
+    description: Spread test suites to run
+    required: false
+    type: string
+    default: ""
+
 runs:
   using: "composite"
   steps:
@@ -20,6 +37,8 @@ runs:
         path: cicd
     - name: Build snap
       shell: bash
+      env:
+        BUILD_ARCHITECTURES: ${{ inputs.architectures }}
       run: |
         # We are inside of the checked out repo
         ./cicd/workflows/snap-build.sh "${{ runner.temp }}"
@@ -35,12 +54,19 @@ runs:
         name: ${{ env.SNAP_NAME }}-snaps
         path: ${{ runner.temp }}/${{ env.SNAP_NAME }}_*.snap
     - name: Run spread tests
+      if: ${{ inputs.run_tests }}
       shell: bash
       run: |
         printf "Running spread tests\n"
         # TODO tests for other archs?
         cp "${{ runner.temp }}"/${{ env.SNAP_NAME }}_*_amd64.snap .
-        spread google:
+        suites="${{ inputs.spread_suites }}"
+        if [ -z "$suites" ]; then
+            echo "Using default spread suite"
+            spread google:
+        else
+            spread $suites
+        fi
     - name: Discard spread workers
       shell: bash
       if: always()
