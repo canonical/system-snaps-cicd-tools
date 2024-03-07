@@ -13,6 +13,11 @@ inputs:
     required: false
     type: boolean
     default: true
+  spread_suites:
+    description: Spread test suites to run
+    required: false
+    type: string
+    default: ""
 
 runs:
   using: "composite"
@@ -55,7 +60,13 @@ runs:
         printf "Running spread tests\n"
         # TODO tests for other archs?
         cp "${{ runner.temp }}"/${{ env.SNAP_NAME }}_*_amd64.snap .
-        spread google:
+        suites="${{ inputs.spread_suites }}"
+        if [ -z "$suites" ]; then
+            echo "Using default spread suite"
+            spread google:
+        else
+            spread $suites
+        fi
     - name: Discard spread workers
       shell: bash
       if: always()
