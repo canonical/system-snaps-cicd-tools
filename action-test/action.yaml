@@ -8,6 +8,11 @@ inputs:
     required: false
     type: string
     default: ""
+  run_tests:
+    description: Run spread tests
+    required: false
+    type: boolean
+    default: true
 
 runs:
   using: "composite"
@@ -44,6 +49,7 @@ runs:
         name: ${{ env.SNAP_NAME }}-snaps
         path: ${{ runner.temp }}/${{ env.SNAP_NAME }}_*.snap
     - name: Run spread tests
+      if: ${{ inputs.run_tests }}
       shell: bash
       run: |
         printf "Running spread tests\n"
