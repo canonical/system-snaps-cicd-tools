@@ -54,7 +54,8 @@ runs:
         name: ${{ env.SNAP_NAME }}-snaps
         path: ${{ runner.temp }}/${{ env.SNAP_NAME }}_*.snap
     - name: Run spread tests
-      if: ${{ inputs.run_tests }}
+      # see https://github.com/actions/runner/issues/1483
+      if: ${{ inputs.run_tests == true || inputs.run_tests == 'true' }}
       shell: bash
       run: |
         printf "Running spread tests\n"
