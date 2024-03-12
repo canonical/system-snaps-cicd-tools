@@ -18,6 +18,11 @@ inputs:
     required: false
     type: string
     default: ""
+  track:
+    description: Track to publish to
+    required: false
+    type: string
+    default: ""
 
 runs:
   using: "composite"
@@ -80,7 +85,14 @@ runs:
       shell: bash
       run: |
         ref=${{ github.ref_name }}
+        override_track="${{ inputs.track }}"
         track=${ref##*-}
+
+        if [ -n "$override_track" ]; then
+            echo "Overriding track to $override_track"
+            track="$override_track"
+        fi
+
         if [ -z "$track" ]; then
             printf "ERROR: no track has been specified\n"
             exit 1
