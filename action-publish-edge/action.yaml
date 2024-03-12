@@ -98,4 +98,4 @@ runs:
             exit 1
         fi
         ./cicd/workflows/snap-publish.sh "${{ runner.temp }}" \
-            ${{ env.SNAP_NAME }} "$track"/edge
+            "${{ env.SNAP_NAME }}" "$track"/edge
