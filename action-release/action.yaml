@@ -24,6 +24,7 @@ runs:
         path: cicd
     - name: Release
       shell: bash
+      # TODO support overriding build architectures and snapcraft channel
       run: |
         printf "Releasing from %s\n" "${{ github.ref_name }}"
         # TODO better probably to have a local install
