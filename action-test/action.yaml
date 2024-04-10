@@ -18,6 +18,11 @@ inputs:
     required: false
     type: string
     default: ""
+  snapcraft_channel:
+    description: Snapcraft snap installation channel
+    required: false
+    type: string
+    default: ""
 
 runs:
   using: "composite"
@@ -39,6 +44,7 @@ runs:
       shell: bash
       env:
         BUILD_ARCHITECTURES: ${{ inputs.architectures }}
+        SNAPCRAFT_CHANNEL: ${{ inputs.snapcraft_channel }}
       run: |
         # We are inside of the checked out repo
         ./cicd/workflows/snap-build.sh "${{ runner.temp }}"
