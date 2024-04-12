@@ -98,7 +98,8 @@
 # $3: release branch
 # $4: ubuntu series
 # $5: results folder
-# $6: architectures to build for (if empty then default for a given series will be used)
+# $6: architectures to build for (if empty a default for a given series will be used)
+# $7: snapcraft channel (if empty a default for a given series will be used)
 build_and_download_snaps()
 {
     local snap_n=$1
@@ -106,7 +107,8 @@ build_and_download_snaps()
     local release_br=$3
     local series=$4
     local results_d=$5
-    local build_architectures=${6-}
+    local build_architectures=$6
+    local snapcraft_channel=$7
 
     # Starting with core20/focal, i386 is not supported
     if [ -z "$build_architectures" ]; then
@@ -130,7 +132,8 @@ build_and_download_snaps()
                     --git-repo="$repo_url" \
                     --git-repo-branch="$release_br" \
                     --results-dir="$results_d" \
-                    --series="$series"
+                    --series="$series" \
+                    --snapcraft-channel="$snapcraft_channel"
 }
 
 # Inject or remove files in a snap

@@ -54,6 +54,9 @@ def parseargs(argv):
                         help="Specify where results should be saved")
     parser.add_argument('--series',
                         help="Set Ubuntu series for the build")
+    parser.add_argument('--snapcraft-channel',
+                        help="Snapcraft channel to install from",
+                        default="")
 
     args = vars(parser.parse_args(argv))
     return args
@@ -174,6 +177,17 @@ def main(argv):
     triggered_build_urls = {}
     valid_arches = ['armhf', 'i386', 'amd64', 'arm64',
                     's390x', 'powerpc', 'ppc64el', 'riscv64']
+    snapcraft_channel = args.get('snapcraft_channel', '')
+    if not snapcraft_channel:
+        if series == "xenial":
+            snapcraft_channel = "4.x/stable"
+        elif series == "bionic":
+            # 6.0 onwards does not support i386, that we publish for core18
+            snapcraft_channel = "5.x/stable"
+        else:
+            snapcraft_channel = "latest/stable"
+    print("Will build using snapcraft from channel: {}".format(snapcraft_channel))
+
     for build_arch in arches:
         # sometimes we see error such as "u'Unknown architecture lpia for
         # ubuntu xenial'" and in order to workaround let's validate the arches
@@ -186,18 +200,13 @@ def main(argv):
         arch = release.getDistroArchSeries(archtag=build_arch)
         if series == "xenial":
             request = snap.requestBuild(archive=primary_archive,
-                                        channels={"snapcraft": "4.x/stable"},
+                                        channels={"snapcraft": snapcraft_channel},
                                         distro_arch_series=arch,
                                         pocket='Updates',
                                         snap_base='/+snap-bases/core')
         else:
-            if series == 'bionic':
-                # 6.0 onwards does not support i386, that we publish for core18
-                snapcraft_chan = "5.x/stable"
-            else:
-                snapcraft_chan = "latest/stable"
             request = snap.requestBuild(archive=primary_archive,
-                                        channels={"snapcraft": snapcraft_chan},
+                                        channels={"snapcraft": snapcraft_channel},
                                         distro_arch_series=arch,
                                         pocket='Updates')
         build_id = str(request).rsplit('/', 1)[-1]

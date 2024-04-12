@@ -327,8 +327,11 @@ main()
     # We build from a temporary branch that we will delete on exit
     git push origin "$build_branch"
     build_d="$workspace"
+    # TODO support overriding build architectures and snapcraft channel
     build_and_download_snaps "$snap_name" "$git_repo" \
-                             "$build_branch" "$series" "$build_d"
+                             "$build_branch" "$series" "$build_d" \
+                             "" ""
+
 
     ## Inject changelog and update manifests
     mkdir -p manifests
