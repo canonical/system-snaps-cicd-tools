@@ -178,6 +178,16 @@ def main(argv):
     valid_arches = ['armhf', 'i386', 'amd64', 'arm64',
                     's390x', 'powerpc', 'ppc64el', 'riscv64']
     snapcraft_channel = args.get('snapcraft_channel', '')
+    if not snapcraft_channel:
+        if series == "xenial":
+            snapcraft_channel = "4.x/stable"
+        elif series == "bionic":
+            # 6.0 onwards does not support i386, that we publish for core18
+            snapcraft_channel = "5.x/stable"
+        else:
+            snapcraft_channel = "latest/stable"
+    print("Will build using snapcraft from channel: {}".format(snapcraft_channel))
+
     for build_arch in arches:
         # sometimes we see error such as "u'Unknown architecture lpia for
         # ubuntu xenial'" and in order to workaround let's validate the arches
@@ -189,20 +199,12 @@ def main(argv):
 
         arch = release.getDistroArchSeries(archtag=build_arch)
         if series == "xenial":
-            if not snapcraft_channel:
-                snapcraft_channel = "4.x/stable"
             request = snap.requestBuild(archive=primary_archive,
                                         channels={"snapcraft": snapcraft_channel},
                                         distro_arch_series=arch,
                                         pocket='Updates',
                                         snap_base='/+snap-bases/core')
         else:
-            if not snapcraft_channel:
-                if series == 'bionic':
-                    # 6.0 onwards does not support i386, that we publish for core18
-                    snapcraft_channel = "5.x/stable"
-                else:
-                    snapcraft_channel = "latest/stable"
             request = snap.requestBuild(archive=primary_archive,
                                         channels={"snapcraft": snapcraft_channel},
                                         distro_arch_series=arch,
