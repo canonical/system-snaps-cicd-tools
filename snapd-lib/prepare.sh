@@ -58,6 +58,10 @@ ensure_jq() {
     elif os.query is-core22; then
         snap install --devmode --edge jq-core22
         snap alias jq-core22.jq jq
+    elif os.query is-core24; then
+        # pending core24 version validation
+        snap install --devmode --edge jq-core22
+        snap alias jq-core22.jq jq
     else
         snap install --devmode jq
     fi
@@ -81,6 +85,7 @@ disable_refreshes() {
     snap remove --purge jq-core18
     snap remove --purge jq-core20
     snap remove --purge jq-core22
+    #snap remove --purge jq-core24
 }
 
 repack_snapd_snap() {
@@ -310,6 +315,8 @@ setup_reflash_magic() {
         core_name="core20"
     elif os.query is-core22; then
         core_name="core22"
+    elif os.query is-core24; then
+        core_name="core24"
     fi
     # XXX: we get "error: too early for operation, device not yet
     # seeded or device model not acknowledged" here sometimes. To
@@ -357,6 +364,9 @@ setup_reflash_magic() {
     elif os.query is-core22; then
         repack_snapd_snap_with_run_mode_firstboot_tweaks "$IMAGE_HOME"
         cp "$TESTSLIB/assertions/ubuntu-core-22-amd64.model" "$IMAGE_HOME/pc.model"
+    elif os.query is-core24; then
+        repack_snapd_snap_with_run_mode_firstboot_tweaks "$IMAGE_HOME"
+        cp "$TESTSLIB/assertions/ubuntu-core-24-amd64.model" "$IMAGE_HOME/pc.model"
     else
         printf "ERROR: unsupported UC release\n"
         return 1
@@ -376,11 +386,13 @@ setup_reflash_magic() {
         IMAGE_CHANNEL="$GADGET_CHANNEL"
     fi
 
-    if os.query is-core20 || os.query is-core22; then
+    if os.query is-core20 || os.query is-core22 || os.query is-core24; then
         if os.query is-core20; then
             BRANCH=20
         elif os.query is-core22; then
             BRANCH=22
+        elif os.query is-core24; then
+            BRANCH=24
         fi
         snap download --basename=pc-kernel --channel="${BRANCH}/${KERNEL_CHANNEL}" pc-kernel
         # make sure we have the snap
@@ -444,11 +456,13 @@ setup_reflash_magic() {
     chmod 0600 "$IMAGE_HOME"/*.snap
 
     # download the core20 snap manually from the specified channel for UC20
-    if os.query is-core20 || os.query is-core22; then
+    if os.query is-core20 || os.query is-core22 || os.query is-core24; then
         if os.query is-core20; then
             BASE=core20
         elif os.query is-core22; then
             BASE=core22
+        elif os.query is-core24; then
+            BASE=core24
         fi
         snap download "${BASE}" --channel="$BASE_CHANNEL" --basename="${BASE}"
 
@@ -484,9 +498,9 @@ setup_reflash_magic() {
                     --channel "$IMAGE_CHANNEL" \
                     $EXTRA_FUNDAMENTAL \
                     --output-dir "$IMAGE_HOME"
-    rm -f ./pc-kernel_*.{snap,assert} ./pc-kernel.{snap,assert} ./pc_*.{snap,assert} ./core{20,22}.{snap,assert}
+    rm -f ./pc-kernel_*.{snap,assert} ./pc-kernel.{snap,assert} ./pc_*.{snap,assert} ./core{20,22,24}.{snap,assert}
 
-    if os.query is-core20 || os.query is-core22; then
+    if os.query is-core20 || os.query is-core22 || os.query is-core24; then
         # (ab)use ubuntu-seed
         LOOP_PARTITION=2
     else
@@ -496,7 +510,7 @@ setup_reflash_magic() {
     # expand the uc16 and uc18 images a little bit (400M) as it currently will
     # run out of space easily from local spread runs if there are extra files in
     # the project not included in the git ignore and spread ignore, etc.
-    if ! (os.query is-core20 || os.query is-core22); then
+    if ! (os.query is-core20 || os.query is-core22 || os.query is-core24); then
         # grow the image by 400M
         truncate --size=+400M "$IMAGE_HOME/$IMAGE"
         # fix the GPT table because old versions of parted complain about this 
@@ -520,7 +534,7 @@ setup_reflash_magic() {
     dev=$(basename "$devloop")
 
     # resize the 2nd partition from that loop device to fix the size
-    if ! (os.query is-core20 || os.query is-core22); then
+    if ! (os.query is-core20 || os.query is-core22 || os.query is-core24); then
         resize2fs -p "/dev/mapper/${dev}p${LOOP_PARTITION}"
     fi
 
@@ -547,7 +561,7 @@ setup_reflash_magic() {
           --exclude /gopath/pkg/ \
           --include core/ \
           "$PROJECT_PATH" /mnt/user-data/
-    elif os.query is-core20 || os.query is-core22; then
+    elif os.query is-core20 || os.query is-core22 || os.query is-core24; then
         # prepare passwd for run-mode-overlay-data
 
         # use /etc/{group,passwd,shadow,gshadow} from the core20 snap, merged
@@ -630,7 +644,7 @@ EOF
     chmod +x "$IMAGE_HOME/prep-reflash.sh"
 
     DEVPREFIX=""
-    if os.query is-core20 || os.query is-core22; then
+    if os.query is-core20 || os.query is-core22 || os.query is-core24; then
         DEVPREFIX="/boot"
     fi
     # extract ROOT from /proc/cmdline
@@ -685,7 +699,7 @@ prepare_ubuntu_core() {
     done
 
     echo "Ensure the snapd snap is available"
-    if os.query is-core18 || os.query is-core20 || os.query is-core22; then
+    if os.query is-core18 || os.query is-core20 || os.query is-core22 || os.query is-core24; then
         if ! snap list snapd; then
             echo "snapd snap on UC18+ is missing"
             snap list
@@ -702,6 +716,9 @@ prepare_ubuntu_core() {
             rsync_snap="test-snapd-rsync-core20"
         elif os.query is-core22; then
             rsync_snap="test-snapd-rsync-core22"
+        elif os.query is-core24; then
+            # todo
+            rsync_snap="test-snapd-rsync-core22"
         fi
         snap install --devmode --edge "$rsync_snap"
         snap alias "$rsync_snap".rsync rsync
@@ -713,7 +730,7 @@ prepare_ubuntu_core() {
 
     echo "Ensure the core snap is cached"
     # Cache snaps
-    if os.query is-core18 || os.query is-core20 || os.query is-core22; then
+    if os.query is-core18 || os.query is-core20 || os.query is-core22 || os.query is-core24; then
         if snap list core >& /dev/null; then
             echo "core snap on UC18+ should not be installed yet"
             snap list
@@ -722,11 +739,12 @@ prepare_ubuntu_core() {
         cache_snaps core
         if os.query is-core18; then
             cache_snaps test-snapd-sh-core18
-        fi
-        if os.query is-core20; then
+        elif os.query is-core20; then
             cache_snaps test-snapd-sh-core20
-        fi
-        if os.query is-core22; then
+        elif os.query is-core22; then
+            cache_snaps test-snapd-sh-core22
+        elif os.query is-core24; then
+            # todo
             cache_snaps test-snapd-sh-core22
         fi
     fi
