@@ -115,8 +115,8 @@ nested_uc20_transition_to_system_mode() {
     local recovery_system="$1"
     local mode="$2"
 
-    if ! nested_is_core_20_system && ! nested_is_core_22_system; then
-        echo "Transition can be done just on uc20 and uc22 systems, exiting..."
+    if ! nested_is_core_20_system && ! nested_is_core_22_system && ! nested_is_core24_system; then
+        echo "Transition can be done just on uc20, uc22 and uc24 systems, exiting..."
         exit 1
     fi
 
@@ -296,6 +296,10 @@ nested_is_classic_system() {
     test "$NESTED_TYPE" = "classic"
 }
 
+nested_is_core_24_system() {
+    os.query is-noble
+}
+
 nested_is_core_22_system() {
     os.query is-jammy
 }
@@ -325,7 +329,7 @@ nested_refresh_to_new_core() {
             remote.exec "snap info core" | grep -E "^tracking: +latest/${NEW_CHANNEL}"
         fi
 
-        if nested_is_core_18_system || nested_is_core_20_system || nested_is_core_22_system; then
+        if nested_is_core_18_system || nested_is_core_20_system || nested_is_core_22_system || nested_is_core24_system; then
             remote.exec "sudo snap refresh snapd --${NEW_CHANNEL}"
             remote.exec "snap info snapd" | grep -E "^tracking: +latest/${NEW_CHANNEL}"
         else
@@ -460,6 +464,8 @@ nested_get_version() {
         echo "20"
     elif nested_is_core_22_system; then
         echo "22"
+    elif nested_is_core_24_system; then
+        echo "24"
     fi
 }
 
@@ -483,6 +489,9 @@ nested_get_model() {
             ;;
         ubuntu-22.04-64)
             echo "$TESTSLIB/assertions/nested-22-amd64.model"
+            ;;
+        ubuntu-24.04-64)
+            echo "$TESTSLIB/assertions/nested-24-amd64.model"
             ;;
         *)
             echo "unsupported system"
@@ -548,7 +557,7 @@ nested_prepare_kernel() {
                 kernel_snap=pc-kernel-new.snap
                 repack_kernel_snap "$kernel_snap"
 
-            elif nested_is_core_20_system || nested_is_core_22_system; then
+            elif nested_is_core_20_system || nested_is_core_22_system || nested_is_core_24_system; then
                 snap download --basename=pc-kernel --channel="$version/edge" pc-kernel
 
                 # set the unix bump time if the NESTED_* var is set,
@@ -579,7 +588,7 @@ nested_prepare_kernel() {
 
 nested_prepare_gadget() {
     if [ "$NESTED_REPACK_GADGET_SNAP" = "true" ]; then
-        if nested_is_core_20_system || nested_is_core_22_system; then
+        if nested_is_core_20_system || nested_is_core_22_system || nested_is_core_24_system; then
             # Prepare the pc gadget snap (unless provided by extra-snaps)
             local snap_id version gadget_snap
             version="$(nested_get_version)"
@@ -675,6 +684,9 @@ nested_prepare_base() {
         elif nested_is_core_22_system; then
             snap_name="core22"
             snap_id="amcUKQILKXHHTlmSa7NMdnXSx02dNeeT"
+        elif nested_is_core_24_system; then
+            snap_name="core24"
+            snap_id="dwTAh7MZZ01zyriOZErqd1JynQLiOGvM"
         fi
         output_name="${snap_name}.snap"
 
@@ -739,6 +751,11 @@ nested_create_core_vm() {
             NESTED_MODEL="$(nested_get_model)"
             
             local EXTRA_SNAPS=""
+            # On UC24 include the console-conf snap by default so the image
+            # won't be different from the other ones in terms of UX.
+            if nested_is_core_24_system; then
+                EXTRA_SNAPS="--snap console-conf"
+            fi
             for mysnap in $(nested_get_extra_snaps); do
                 EXTRA_SNAPS="$EXTRA_SNAPS --snap $mysnap"
             done
@@ -789,7 +806,7 @@ nested_create_core_vm() {
 
     # Configure the user for the vm
     if [ "$NESTED_USE_CLOUD_INIT" = "true" ]; then
-        if nested_is_core_20_system || nested_is_core_22_system; then
+        if nested_is_core_20_system || nested_is_core_22_system || nested_is_core24_system; then
             nested_configure_cloud_init_on_core20_vm "$NESTED_IMAGES_DIR/$IMAGE_NAME"
         else
             nested_configure_cloud_init_on_core_vm "$NESTED_IMAGES_DIR/$IMAGE_NAME"
@@ -1067,14 +1084,14 @@ nested_start_core_vm_unit() {
         # storage to
         PARAM_ASSERTIONS="-drive if=none,id=stick,format=raw,file=$NESTED_ASSETS_DIR/assertions.disk,cache=none,format=raw -device nec-usb-xhci,id=xhci -device usb-storage,bus=xhci.0,removable=true,drive=stick"
     fi
-    if nested_is_core_20_system || nested_is_core_22_system; then
+    if nested_is_core_20_system || nested_is_core_22_system || nested_is_core24_system; then
         # use a bundle EFI bios by default
         PARAM_BIOS="-bios /usr/share/ovmf/OVMF.fd"
         local OVMF_CODE OVMF_VARS
         OVMF_CODE="secboot"
         OVMF_VARS="ms"
 
-        if nested_is_core_22_system; then
+        if nested_is_core_22_system || nested_is_core24_system; then
             wget https://storage.googleapis.com/snapd-spread-tests/dependencies/OVMF_CODE.secboot.fd
             mv OVMF_CODE.secboot.fd /usr/share/OVMF/OVMF_CODE.secboot.fd
             wget https://storage.googleapis.com/snapd-spread-tests/dependencies/OVMF_VARS.snakeoil.fd
