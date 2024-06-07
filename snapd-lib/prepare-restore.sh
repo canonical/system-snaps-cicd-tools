@@ -610,10 +610,18 @@ prepare_project_each() {
     fixup_dev_random
 }
 
+is_testing_core() {
+    if [ -n "$SPREAD_SYSTEM" ]; then
+        [[ "$SPREAD_SYSTEM" == ubuntu-core-* ]]
+    else
+        os.query is-core
+    fi
+}
+
 prepare_suite() {
     # shellcheck source=tests/lib/prepare.sh
     . "$TESTSLIB"/prepare.sh
-    if os.query is-core; then
+    if is_testing_core; then
         prepare_ubuntu_core
     else
         prepare_classic
