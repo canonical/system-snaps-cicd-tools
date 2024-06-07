@@ -180,7 +180,7 @@ remove_disabled_snaps
 # When the variable REUSE_SNAPD is set to 1, we don't remove and purge snapd.
 # In that case we just cleanup the environment by removing installed snaps as
 # it is done for core systems.
-if os.query is-core || [ "$REUSE_SNAPD" = 1 ]; then
+if is_test_target_core || [ "$REUSE_SNAPD" = 1 ]; then
     reset_all_snap "$@"
 else
     reset_classic "$@"
