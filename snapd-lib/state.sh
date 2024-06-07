@@ -8,6 +8,36 @@ SNAPD_ACTIVE_UNITS="$RUNTIME_STATE_PATH/snapd-active-units"
 # shellcheck source=tests/lib/systemd.sh
 . "$TESTSLIB/systemd.sh"
 
+# Set of helpers for checking if the test system is expected to be
+# Ubuntu Core. The helpers can be used both in a UC system or in
+# a classic system which will be transformed into UC. Note, the 
+# helpers assume a specific formatting of SPREAD_SYSTEM environment
+# variable which follows this pattern: ubuntu-core-<VERSION>[-ARCH]-<BITS>
+# where arch is "" for amd64, arm for armhf and arm64, etc
+is_test_target_core() {
+    local VERSION=${1:-}
+    [[ "$SPREAD_SYSTEM" = ubuntu-core-${VERSION}* ]]
+}
+
+is_test_target_core_ge() {
+    local VERSION=${1:-}
+    if [ -z "$VERSION" ]; then
+        echo "version id is expected"
+        exit 1
+    fi
+    CURR_VERSION="$(cut -d- -f3 <<< "$SPREAD_SYSTEM")"
+    [ "$CURR_VERSION" -ge "${VERSION}" ]
+}
+
+is_test_target_core_le() {
+    local VERSION=${1:-}
+    if [ -z "$VERSION" ]; then
+        echo "version id is expected"
+        exit 1
+    fi
+    CURR_VERSION="$(cut -d- -f3 <<< "$SPREAD_SYSTEM")"
+    [ "$CURR_VERSION" -le "${VERSION}" ]
+}
 
 delete_snapd_state() {
     rm -rf "$SNAPD_STATE_PATH"
@@ -18,7 +48,7 @@ prepare_state() {
 }
 
 is_snapd_state_saved() {
-    if os.query is-core && [ -d "$SNAPD_STATE_PATH"/snapd-lib ]; then
+    if is_test_target_core && [ -d "$SNAPD_STATE_PATH"/snapd-lib ]; then
         return 0
     elif os.query is-classic && [ -f "$SNAPD_STATE_FILE" ]; then
         return 0
@@ -29,7 +59,7 @@ is_snapd_state_saved() {
 
 save_snapd_state() {
     prepare_state
-    if os.query is-core; then
+    if is_test_target_core; then
         boot_path="$("$TESTSTOOLS"/boot-state boot-path)"
         test -n "$boot_path" || return 1
 
@@ -83,7 +113,7 @@ save_snapd_state() {
 }
 
 restore_snapd_state() {
-    if os.query is-core; then
+    if is_test_target_core; then
         # we need to ensure that we also restore the boot environment
         # fully for tests that break it
         boot_path="$("$TESTSTOOLS"/boot-state boot-path)"
@@ -123,7 +153,7 @@ restore_snapd_lib() {
     # Synchronize snaps, seed and cache directories. The this is done separately in order to avoid copying
     # the snap files due to it is a heavy task and take most of the time of the restore phase.
     rsync -av --delete "$SNAPD_STATE_PATH"/snapd-lib/snaps /var/lib/snapd
-    if os.query is-core20 || os.query is-core22 || os.query is-core24; then
+    if  is_test_target_core_ge 20; then
         # TODO:UC20: /var/lib/snapd/seed is a read only bind mount, use the rw
         # mount or later mount seed as needed
         rsync -av --delete "$SNAPD_STATE_PATH"/snapd-lib/seed/ /run/mnt/ubuntu-seed/
