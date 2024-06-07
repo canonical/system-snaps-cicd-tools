@@ -59,9 +59,8 @@ ensure_jq() {
         snap install --devmode --edge jq-core22
         snap alias jq-core22.jq jq
     elif is_test_target_core 24; then
-        # pending core24 version validation
-        snap install --devmode --edge jq-core22
-        snap alias jq-core22.jq jq
+        snap install --devmode --edge test-snapd-jq-core24
+        snap alias test-snapd-jq-core24.jq jq
     else
         snap install --devmode jq
     fi
@@ -85,7 +84,7 @@ disable_refreshes() {
     snap remove --purge jq-core18
     snap remove --purge jq-core20
     snap remove --purge jq-core22
-    #snap remove --purge jq-core24
+    snap remove --purge test-snapd-jq-core24
 }
 
 repack_snapd_snap() {
@@ -744,8 +743,7 @@ prepare_ubuntu_core() {
         elif is_test_target_core 22; then
             cache_snaps test-snapd-sh-core22
         elif is_test_target_core 24; then
-            # todo
-            cache_snaps test-snapd-sh-core22
+            cache_snaps test-snapd-sh-core24
         fi
     fi
 
