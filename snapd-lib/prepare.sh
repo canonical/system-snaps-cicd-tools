@@ -716,8 +716,7 @@ prepare_ubuntu_core() {
         elif is_test_target_core 22; then
             rsync_snap="test-snapd-rsync-core22"
         elif is_test_target_core 24; then
-            # todo
-            rsync_snap="test-snapd-rsync-core22"
+            rsync_snap="test-snapd-rsync-core24"
         fi
         snap install --devmode --edge "$rsync_snap"
         snap alias "$rsync_snap".rsync rsync
