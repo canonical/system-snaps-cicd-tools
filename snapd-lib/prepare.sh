@@ -643,7 +643,7 @@ EOF
     chmod +x "$IMAGE_HOME/prep-reflash.sh"
 
     DEVPREFIX=""
-    if is_test_target_core_ge 20; then
+    if is_test_target_core 20 || is_test_target_core 22; then
         DEVPREFIX="/boot"
     fi
     # extract ROOT from /proc/cmdline
