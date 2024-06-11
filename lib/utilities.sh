@@ -12,7 +12,13 @@ snap_install_from_file() {
     # assertions into place. Second local install will then bring in
     # our locally built snap.
     if ! snap list "$name" &> /dev/null; then
-	snap install "$name" --channel="$ref_channel"
+	    if ! snap install "$name" --channel="$ref_channel"; then
+            # ignore error if snap info produces nothing
+            if snap info "$name" | grep "$ref_channel"; then
+                echo "failed to install $name"
+                exit 1
+            fi
+        fi
         # Avoid race conditions that seem to happen when doing two
         # consecutive installations - probably because of netplan
         # re-starting daemons.
