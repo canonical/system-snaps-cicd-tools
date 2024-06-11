@@ -14,6 +14,7 @@ snap_install_from_file() {
     if ! snap list "$name" &> /dev/null; then
 	    if ! snap install "$name" --channel="$ref_channel"; then
             # ignore error if snap info produces nothing
+            # this can happen for first publishes
             if snap info "$name" | grep "$ref_channel"; then
                 echo "failed to install $name"
                 exit 1
