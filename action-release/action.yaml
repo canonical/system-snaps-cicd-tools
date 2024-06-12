@@ -2,6 +2,18 @@ name: 'ReleaseSystemSnap'
 description: 'Release a system snap to the beta channel'
 author: 'Alfonso Sanchez-Beato'
 
+inputs:
+  architectures:
+    description: Comma separated list of architectures to override the default
+    required: false
+    type: string
+    default: ""
+  snapcraft_channel:
+    description: Snapcraft snap installation channel
+    required: false
+    type: string
+    default: ""
+
 runs:
   using: "composite"
   steps:
@@ -24,7 +36,9 @@ runs:
         path: cicd
     - name: Release
       shell: bash
-      # TODO support overriding build architectures and snapcraft channel
+      env:
+        BUILD_ARCHITECTURES: ${{ inputs.architectures }}
+        SNAPCRAFT_CHANNEL: ${{ inputs.snapcraft_channel }}
       run: |
         printf "Releasing from %s\n" "${{ github.ref_name }}"
         # TODO better probably to have a local install
