@@ -140,6 +140,14 @@ def main(argv):
     if snap is None:
         print("ERROR: Failed to create snap build on launchpad")
 
+    # Enable ESM packages for the recipe
+    snap.pro_enable = True
+    try:
+        snap.lp_save()
+    except Exception as ex:
+        print("Could not enable Pro for {}: {}".format(build_name, ex))
+        sys.exit(1)
+
     # Not every snap is build against all arches.
     arches = [processor.name for processor in snap.processors]
     if not ephemeral_build and args['architectures'] is not None:
@@ -186,7 +194,8 @@ def main(argv):
             snapcraft_channel = "5.x/stable"
         else:
             snapcraft_channel = "latest/stable"
-    print("Will build using snapcraft from channel: {}".format(snapcraft_channel))
+    print("Will build using snapcraft from channel: {}".format(
+        snapcraft_channel))
 
     for build_arch in arches:
         # sometimes we see error such as "u'Unknown architecture lpia for
@@ -200,13 +209,15 @@ def main(argv):
         arch = release.getDistroArchSeries(archtag=build_arch)
         if series == "xenial":
             request = snap.requestBuild(archive=primary_archive,
-                                        channels={"snapcraft": snapcraft_channel},
+                                        channels={"snapcraft":
+                                                  snapcraft_channel},
                                         distro_arch_series=arch,
                                         pocket='Updates',
                                         snap_base='/+snap-bases/core')
         else:
             request = snap.requestBuild(archive=primary_archive,
-                                        channels={"snapcraft": snapcraft_channel},
+                                        channels={"snapcraft":
+                                                  snapcraft_channel},
                                         distro_arch_series=arch,
                                         pocket='Updates')
         build_id = str(request).rsplit('/', 1)[-1]
