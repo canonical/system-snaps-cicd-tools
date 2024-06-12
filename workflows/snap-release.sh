@@ -327,11 +327,10 @@ main()
     # We build from a temporary branch that we will delete on exit
     git push origin "$build_branch"
     build_d="$workspace"
-    # TODO support overriding build architectures and snapcraft channel
     build_and_download_snaps "$snap_name" "$git_repo" \
                              "$build_branch" "$series" "$build_d" \
-                             "" ""
-
+                             "${BUILD_ARCHITECTURES-}" \
+                             "${SNAPCRAFT_CHANNEL-}"
 
     ## Inject changelog and update manifests
     mkdir -p manifests
@@ -375,6 +374,9 @@ main()
 if [ $# -ne 2 ]; then
     printf "Wrong number of arguments.\n"
     printf "Usage: %s <release_branch> <workspace_dir>\n" "$0"
+    printf "Environment\n"
+    printf "   - BUILD_ARCHITECTURES - override build architectures\n"
+    printf "   - SNAPCRAFT_CHANNEL   - override snapcraft snap channel\n"
     exit 1
 fi
 NEXT_VERSION=${NEXT_VERSION:-}
