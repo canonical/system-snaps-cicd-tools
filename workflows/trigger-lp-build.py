@@ -16,6 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import re
 import sys
 import time
 import random
@@ -39,14 +40,13 @@ def parseargs(argv):
     parser.add_argument('-p', '--publish', action='store_true',
                         help="Trigger a publish build instead of a daily "
                         "(default)")
-    parser.add_argument('-n', '--new', action='store_true',
-                        help="Create a new ephemeral snap build on launchpad")
     parser.add_argument('--git-repo',
                         help="Git repository to be used for new ephemeral "
                         "snap build")
     parser.add_argument('--git-repo-branch',
-                        help="Git repository branch to be used for new "
-                        "ephemeral snap build")
+                        help="Git repository branch to be used for snap build "
+                        "(if it is snap-* it will be used to search for the "
+                        "right static snap recipe)")
     parser.add_argument('-a', '--architectures',
                         help="Specify architectures to build for. "
                         "Separate multiple architectures by ','")
@@ -65,18 +65,11 @@ def parseargs(argv):
 def main(argv):
     args = parseargs(argv)
 
-    ephemeral_build = False
     results_dir = os.path.join(os.getcwd(), "results")
     url_pool = urllib3.PoolManager()
 
     if 'results_dir' in args:
         results_dir = args['results_dir']
-
-    if args['new']:
-        ephemeral_build = True
-        if args['git_repo'] is None or args['git_repo_branch'] is None:
-            print("ERROR: No git repository or a branch supplied")
-            sys.exit(1)
 
     series = 'xenial'
     if 'series' in args:
@@ -100,7 +93,22 @@ def main(argv):
     primary_archive = ubuntu.getArchive(name='primary')
 
     snap = None
-    if ephemeral_build:
+    ephemeral_build = False
+    if args['git_repo_branch'] is not None and \
+       args['git_repo_branch'].startswith('snap-'):
+        # We remove the temporal branch suffix
+        rec_suffix = re.sub('_.*', '', args['git_repo_branch'])
+        build_name = "%s-%s" % (args['snap'], rec_suffix)
+        print('Getting snap recipe {} from {} team'.format(build_name, team))
+        snap = launchpad.snaps.getByName(name=build_name, owner=team)
+        # The name of the branch varies in each call
+        snap.git_path = 'refs/heads/' + args['git_repo_branch']
+        snap.lp_save()
+    else:
+        ephemeral_build = True
+        if args['git_repo'] is None or args['git_repo_branch'] is None:
+            print("ERROR: No git repository or a branch supplied")
+            sys.exit(1)
         snap_arches = []
         if 'architectures' in args and args['architectures'] is not None:
             snap_arches = args["architectures"].split(",")
@@ -131,22 +139,9 @@ def main(argv):
                                    git_repository_url=args['git_repo'],
                                    git_path='%s' % args["git_repo_branch"],
                                    owner=team)
-    else:
-        build_name = "%s-daily" % args["snap"]
-        if args["publish"] is True:
-            build_name = "%s-publish" % args["snap"]
-        snap = launchpad.snaps.getByName(name=build_name, owner=team)
 
     if snap is None:
         print("ERROR: Failed to create snap build on launchpad")
-
-    # Enable ESM packages for the recipe
-    snap.pro_enable = True
-    try:
-        snap.lp_save()
-    except Exception as ex:
-        print("Could not enable Pro for {}: {}".format(build_name, ex))
-        sys.exit(1)
 
     # Not every snap is build against all arches.
     arches = [processor.name for processor in snap.processors]

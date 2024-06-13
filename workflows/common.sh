@@ -49,7 +49,7 @@ build_and_download_snaps()
     # Build snap without publishing it to get the new manifest.
     # TODO we should leverage it to run tests as well
     "$CICD_SCRIPTS"/trigger-lp-build.py \
-                    -s "$snap_n" -n \
+                    -s "$snap_n" \
                     --architectures="$archs" \
                     --git-repo="$repo_url" \
                     --git-repo-branch="$release_br" \
