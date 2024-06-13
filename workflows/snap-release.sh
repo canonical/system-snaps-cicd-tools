@@ -18,7 +18,6 @@ set -ex -o pipefail
 shopt -s inherit_errexit
 
 CI_ID=$GITHUB_RUN_ID
-BUILD_BRANCH=build-$CI_ID
 GIT_REPO=https://github.com/$GITHUB_REPOSITORY
 
 # Find the scripts folder
@@ -31,7 +30,9 @@ CICD_SCRIPTS=${BASH_SOURCE[0]%%"$script_name"}./
 # Make sure we release all resources on shutdown
 finish()
 {
-    git push origin :"$BUILD_BRANCH" || true
+    if [ -n "$BUILD_BRANCH" ]; then
+        git push origin :"$BUILD_BRANCH" || true
+    fi
 }
 trap finish EXIT
 
@@ -380,4 +381,5 @@ if [ $# -ne 2 ]; then
     exit 1
 fi
 NEXT_VERSION=${NEXT_VERSION:-}
+BUILD_BRANCH="$1"_$CI_ID
 main "$1" "$2" "$GIT_REPO" "$BUILD_BRANCH" "$NEXT_VERSION"
