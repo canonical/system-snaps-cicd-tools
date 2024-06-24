@@ -381,5 +381,5 @@ if [ $# -ne 2 ]; then
     exit 1
 fi
 NEXT_VERSION=${NEXT_VERSION:-}
-BUILD_BRANCH="$1"_$CI_ID
+BUILD_BRANCH="${1}_${CI_ID}"
 main "$1" "$2" "$GIT_REPO" "$BUILD_BRANCH" "$NEXT_VERSION"
