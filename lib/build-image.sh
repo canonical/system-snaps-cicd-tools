@@ -22,9 +22,6 @@
 # (which has to be defined in `PROJECT_PATH`).
 # This is expected to be called from spread.
 
-# TODO: This build Ubuntu Core 22. We should fix change it to build
-# any version.
-
 set -eu
 
 TMPDIR="$(mktemp -d)"
@@ -34,12 +31,32 @@ cleanup() {
 
 trap cleanup EXIT
 
+# default value
+CORE_VERSION=22
+
+while [ $# -gt 0 ]; do
+    case "${1}" in
+        --core-version)
+            CORE_VERSION="${2}"
+            shift 1
+            ;;
+        --core-version=*)
+            CORE_VERSION="${1#--core-version=}"
+            ;;
+        *)
+            echo "unknown parameter ${1}" 1>&2
+            exit 1
+            ;;
+    esac
+    shift 1
+done
+
 DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends snapd squashfs-tools
 snap install --classic ubuntu-image
 
-wget -O "${TMPDIR}/model.model" https://raw.githubusercontent.com/snapcore/models/master/ubuntu-core-22-amd64-dangerous.model
+wget -O "${TMPDIR}/model.model" https://raw.githubusercontent.com/snapcore/models/master/ubuntu-core-"${CORE_VERSION}"-amd64-dangerous.model
 
-(cd "${TMPDIR}"; snap download pc --channel=22/edge --basename=pc)
+(cd "${TMPDIR}"; snap download pc --channel="${CORE_VERSION}"/edge --basename=pc)
 unsquashfs -d "${TMPDIR}/pc" "${TMPDIR}/pc.snap"
 
 cat <<EOF >>"${TMPDIR}/pc/gadget.yaml"
