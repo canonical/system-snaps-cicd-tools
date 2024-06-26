@@ -118,7 +118,7 @@ EOF
 esac
 
 cat >>"${TMPDIR}/pc/cmdline.extra" <<EOF
-systemd.log_level=debug systemd.journald.forward_to_console=1 console=ttyS0
+systemd.journald.forward_to_console=1 console=ttyS0
 EOF
 
 tar zcf "${TMPDIR}/pc/data.tar.gz" -C "${PROJECT_PATH}" .
