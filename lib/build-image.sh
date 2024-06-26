@@ -84,7 +84,7 @@ EOF
         shadow_unit="$(base64 -w0 etc-shadow.mount)"
         cat <<EOF >"${TMPDIR}/pc/cloud.conf"
 #cloud-config
-datasource_list: [NoCloud]
+datasource_list: [None]
 runcmd:
   - echo "Setting up spread user"
   - mkdir '${PROJECT_PATH}'
@@ -103,7 +103,7 @@ EOF
     *)
         cat <<EOF >"${TMPDIR}/pc/cloud.conf"
 #cloud-config
-datasource_list: [NoCloud]
+datasource_list: [None]
 runcmd:
   - echo "Setting up spread user"
   - adduser --extrausers --shell /bin/bash "${ssh_user}"
