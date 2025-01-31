@@ -60,7 +60,7 @@ runs:
         done
         echo "SNAP_NAME=$SNAP_NAME" >> $GITHUB_ENV
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ env.SNAP_NAME }}-snaps
         path: ${{ runner.temp }}/${{ env.SNAP_NAME }}_*.snap
