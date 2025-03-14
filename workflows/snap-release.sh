@@ -286,7 +286,7 @@ main()
     local build_branch=$4
     local next_version=$5
     local snapcraft_yaml_path snap_name current_version version next_minor
-    local changelog_version series track channel previous_version arch
+    local changelog_version base track channel previous_version arch
     local build_d new_man_d
 
     snapcraft_yaml_path=$(get_snapcraft_yaml_path)
@@ -311,7 +311,7 @@ main()
 
     set_git_identity
 
-    series=$(get_series "$snapcraft_yaml_path")
+    base=$(grep -oP '^base:[[:space:]]+\K\w+' "$snapcraft_yaml_path") || true
 
     track=$(get_track_from_branch "$release_branch")
     channel="$track"/beta
@@ -329,7 +329,7 @@ main()
     git push origin "$build_branch"
     build_d="$workspace"
     build_and_download_snaps "$snap_name" "$git_repo" \
-                             "$build_branch" "$series" "$build_d" \
+                             "$build_branch" "$base" "$build_d" \
                              "${BUILD_ARCHITECTURES-}" \
                              "${SNAPCRAFT_CHANNEL-}"
 

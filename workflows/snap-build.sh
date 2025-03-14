@@ -46,14 +46,14 @@ main()
     fi
 
     # TODO replace with jq
-    local snap_name series
+    local snap_name base
     snap_name=$(grep -v ^\# "$snapcraft_yaml_p" |
                     head -n 5 | grep "^name:" | awk '{print $2}')
-    series=$(get_series "$snapcraft_yaml_p")
+    base=$(grep -oP '^base:[[:space:]]+\K\w+' "$snapcraft_yaml_p") || true
 
     build_and_download_snaps "$snap_name" \
                              https://github.com/"$REPOSITORY".git \
-                             "$BRANCH" "$series" "$build_d" \
+                             "$BRANCH" "$base" "$build_d" \
                              "${BUILD_ARCHITECTURES-}" \
                              "${SNAPCRAFT_CHANNEL-}"
 }

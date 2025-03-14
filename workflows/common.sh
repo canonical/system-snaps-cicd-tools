@@ -18,7 +18,7 @@
 # $1: snap name
 # $2: repository url (launchpad API does not accept git+ssh)
 # $3: release branch
-# $4: ubuntu series
+# $4: core base
 # $5: results folder
 # $6: architectures to build for (if empty a default for a given series will be used)
 # $7: snapcraft channel (if empty a default for a given series will be used)
@@ -27,16 +27,16 @@ build_and_download_snaps()
     local snap_n=$1
     local repo_url=$2
     local release_br=$3
-    local series=$4
+    local base=$4
     local results_d=$5
     local build_architectures=$6
     local snapcraft_channel=$7
 
     # Starting with core20/focal, i386 is not supported
     if [ -z "$build_architectures" ]; then
-        if [ "$series" = xenial ] || [ "$series" = bionic ]; then
+        if [ "$base" = core ] || [ "$base" = core18 ]; then
             archs=i386,amd64,armhf,arm64
-        elif [ "$series" = focal ]; then
+        elif [ "$base" = core20 ]; then
             archs=amd64,armhf,arm64
         else
             archs=amd64,armhf,arm64,riscv64
@@ -54,7 +54,7 @@ build_and_download_snaps()
                     --git-repo="$repo_url" \
                     --git-repo-branch="$release_br" \
                     --results-dir="$results_d" \
-                    --series="$series" \
+                    --base="$base" \
                     --snapcraft-channel="$snapcraft_channel"
 }
 
@@ -144,21 +144,6 @@ get_snapcraft_yaml_path()
     elif [ -f snap/snapcraft.yaml ]; then
         printf snap/snapcraft.yaml
     fi
-}
-
-# Get snap series from snapcraft.yaml
-# $1: path to snapcraft.yaml
-get_series()
-{
-    local base
-    base=$(grep -oP '^base:[[:space:]]+core\K\w+' "$1") || true
-    case "$base" in
-        24) printf noble ;;
-        22) printf jammy ;;
-        20) printf focal ;;
-        18) printf bionic ;;
-        *)  printf xenial ;;
-    esac
 }
 
 # Get track from branch, assuming it is of the form <name>-<track>

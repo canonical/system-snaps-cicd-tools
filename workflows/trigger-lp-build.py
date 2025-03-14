@@ -52,14 +52,27 @@ def parseargs(argv):
                         "Separate multiple architectures by ','")
     parser.add_argument('-r', '--results-dir',
                         help="Specify where results should be saved")
-    parser.add_argument('--series',
-                        help="Set Ubuntu series for the build")
+    parser.add_argument('--base',
+                        help="Set base for the build")
     parser.add_argument('--snapcraft-channel',
                         help="Snapcraft channel to install from",
                         default="")
 
     args = vars(parser.parse_args(argv))
     return args
+
+
+def get_series(base):
+    if base == "core24":
+        return "noble"
+    elif base == "core22":
+        return "jammy"
+    elif base == "core20":
+        return "focal"
+    elif base == "core18":
+        return "bionic"
+    else:
+        return "xenial"
 
 
 def main(argv):
@@ -71,9 +84,11 @@ def main(argv):
     if 'results_dir' in args:
         results_dir = args['results_dir']
 
-    series = 'xenial'
-    if 'series' in args:
-        series = args['series']
+    base = 'core'
+    if 'base' in args:
+        base = args['base']
+
+    series = get_series(base)
 
     lp_app = "launchpad-trigger"
     lp_env = "production"
@@ -202,19 +217,12 @@ def main(argv):
             continue
 
         arch = release.getDistroArchSeries(archtag=build_arch)
-        if series == "xenial":
-            request = snap.requestBuild(archive=primary_archive,
-                                        channels={"snapcraft":
-                                                  snapcraft_channel},
-                                        distro_arch_series=arch,
-                                        pocket='Updates',
-                                        snap_base='/+snap-bases/core')
-        else:
-            request = snap.requestBuild(archive=primary_archive,
-                                        channels={"snapcraft":
-                                                  snapcraft_channel},
-                                        distro_arch_series=arch,
-                                        pocket='Updates')
+        request = snap.requestBuild(archive=primary_archive,
+                                    channels={"snapcraft":
+                                              snapcraft_channel},
+                                    distro_arch_series=arch,
+                                    pocket='Updates',
+                                    snap_base='/+snap-bases/'+base)
         build_id = str(request).rsplit('/', 1)[-1]
         triggered_builds.append(build_id)
         triggered_build_urls[build_id] = request.self_link
