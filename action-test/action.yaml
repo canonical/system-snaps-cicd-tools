@@ -65,6 +65,10 @@ runs:
       shell: bash
       run: |
         printf "Running spread tests\n"
+        wget -q https://storage.googleapis.com/snapd-spread-tests/spread/spread-plus-amd64.tar.gz \
+            -O - | tar xz
+        mv spread-plus ~/bin/spread
+        export PATH=$PATH:~/bin/
         # TODO tests for other archs?
         cp "${{ runner.temp }}"/${{ env.SNAP_NAME }}_*_amd64.snap .
         suites="${{ inputs.spread_suites }}"
