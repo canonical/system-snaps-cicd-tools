@@ -109,19 +109,20 @@ def main(argv):
 
     snap = None
     ephemeral_build = False
-    if args['git_repo_branch'] is not None and \
-       args['git_repo_branch'].startswith('snap-'):
+    repo_branch = args['git_repo_branch']
+    if repo_branch is not None and \
+       (repo_branch.startswith('snap-') or repo_branch.startswith('latest')):
         # We remove the temporal branch suffix
-        rec_suffix = re.sub('_.*', '', args['git_repo_branch'])
+        rec_suffix = re.sub('_.*', '', repo_branch)
         build_name = "%s-%s" % (args['snap'], rec_suffix)
         print('Getting snap recipe {} from {} team'.format(build_name, team))
         snap = launchpad.snaps.getByName(name=build_name, owner=team)
         # The name of the branch varies in each call
-        snap.git_path = 'refs/heads/' + args['git_repo_branch']
+        snap.git_path = 'refs/heads/' + repo_branch
         snap.lp_save()
     else:
         ephemeral_build = True
-        if args['git_repo'] is None or args['git_repo_branch'] is None:
+        if args['git_repo'] is None or repo_branch is None:
             print("ERROR: No git repository or a branch supplied")
             sys.exit(1)
         snap_arches = []
@@ -152,7 +153,7 @@ def main(argv):
                                    processors=processors,
                                    auto_build=False, distro_series=release,
                                    git_repository_url=args['git_repo'],
-                                   git_path='%s' % args["git_repo_branch"],
+                                   git_path='%s' % repo_branch,
                                    owner=team)
 
     if snap is None:
