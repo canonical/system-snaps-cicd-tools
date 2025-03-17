@@ -360,9 +360,11 @@ main()
                              "" snap/unstage.txt
     done
 
-    # Run CI tests, using the just built snap
-    cp "$build_d"/"$snap_name"_*_amd64.snap .
-    spread google:
+    # Run CI tests for core18+, using the just built snap
+    if [ "$base" != core ]; then
+        cp "$build_d"/"$snap_name"_*_amd64.snap .
+        spread google:
+    fi
 
     # Commit changes to release branch (version in yaml and changelog)
     open_next_version_development "$next_version" "$release_branch" \
