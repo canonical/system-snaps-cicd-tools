@@ -119,6 +119,9 @@ def main(argv):
         snap = launchpad.snaps.getByName(name=build_name, owner=team)
         # The name of the branch varies in each call
         snap.git_path = 'refs/heads/' + repo_branch
+        # Note that snap.git_repository_url is read-only, so we need to make
+        # sure that the snap recipe already points to the right repo, we cannot
+        # set it here.
         snap.lp_save()
     else:
         ephemeral_build = True
