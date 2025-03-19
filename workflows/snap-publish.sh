@@ -37,5 +37,7 @@ if [[ "$channel" != */* ]]; then
     exit 1
 fi
 
-snapcraft whoami
+# "|| true": needed until LP#2103643 is fixed. The command is run just for
+# debugging purposes anyway.
+snapcraft whoami || true
 push_and_release_snap "$build_d" "$snap_name" "$channel"
