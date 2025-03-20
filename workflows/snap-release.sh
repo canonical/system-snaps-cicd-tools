@@ -323,7 +323,9 @@ main()
     git checkout -b "$build_branch"
 
     # Set release version now so it gets reflected in the built snap
-    set_version "$version" "$snapcraft_yaml_path"
+    if [ "$version" != null ]; then
+        set_version "$version" "$snapcraft_yaml_path"
+    fi
 
     # We build from a temporary branch that we will delete on exit
     git push origin "$build_branch"
@@ -332,6 +334,11 @@ main()
                              "$build_branch" "$base" "$build_d" \
                              "${BUILD_ARCHITECTURES-}" \
                              "${SNAPCRAFT_CHANNEL-}"
+
+    # This snap does not follow the usual schema, do not generate changelog
+    if [ "$version" = null ]; then
+        return
+    fi
 
     ## Inject changelog and update manifests
     mkdir -p manifests
