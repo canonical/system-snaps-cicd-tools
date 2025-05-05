@@ -48,7 +48,7 @@ runs:
         mv yq_linux_amd64 ~/bin/yq
         wget -q https://storage.googleapis.com/snapd-spread-tests/spread/spread-plus-amd64.tar.gz \
             -O - | tar xz
-        mv spread-plus ~/bin/spread
+        mv spread ~/bin/spread
         export PATH=$PATH:~/bin/
         ./cicd/workflows/snap-release.sh "${{ github.ref_name }}" "${{ runner.temp }}"
         for s in "${{ runner.temp }}"/*_*.snap; do
