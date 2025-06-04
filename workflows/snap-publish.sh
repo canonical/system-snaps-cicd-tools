@@ -39,7 +39,7 @@ fi
 
 # We need snapcraft to upload and release the snaps
 if ! command -v snapcraft; then
-    sudo snap install snapcraft
+    sudo snap install --classic snapcraft
 fi
 # "|| true": needed until LP#2103643 is fixed. The command is run just for
 # debugging purposes anyway.
