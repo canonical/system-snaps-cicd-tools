@@ -37,6 +37,10 @@ if [[ "$channel" != */* ]]; then
     exit 1
 fi
 
+# We need snapcraft to upload and release the snaps
+if ! command -v snapcraft; then
+    sudo snap install snapcraft
+fi
 # "|| true": needed until LP#2103643 is fixed. The command is run just for
 # debugging purposes anyway.
 snapcraft whoami || true
