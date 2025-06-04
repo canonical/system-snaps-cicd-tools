@@ -71,5 +71,8 @@ runs:
             printf "ERROR: no track has been specified\n"
             exit 1
         fi
+        if  [ "$track" = main ] || [ "$track" = master ]; then
+            track=latest
+        fi
         ./cicd/workflows/snap-publish.sh "${{ runner.temp }}" \
             ${{ env.SNAP_NAME }} "$track"/beta
