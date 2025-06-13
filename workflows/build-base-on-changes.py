@@ -15,6 +15,7 @@ import yaml
 
 from argparse import ArgumentParser
 from datetime import datetime
+from debian import deb822
 from launchpadlib.launchpad import Launchpad
 
 
@@ -53,18 +54,10 @@ def update_snap2version(snap2version, package, version):
 
 def package_versions_from_file(pkgs_p, snap2version):
     with gzip.open(pkgs_p, 'rt') as pkgs_f:
-        package = ''
-        version = ''
-        for line in pkgs_f:
-            if line.startswith('Package:'):
-                package = line.split()[1]
-            elif line.startswith('Version:'):
-                version = line.split()[1]
-            elif line.isspace():
-                update_snap2version(snap2version, package, version)
-                package = ''
-                version = ''
-        update_snap2version(snap2version, package, version)
+        for pkg in deb822.Packages.iter_paragraphs(pkgs_f):
+            package = pkg.get('Package')
+            version = pkg.get('Version')
+            update_snap2version(snap2version, package, version)
 
 
 def check_packages_changed(core_series):
@@ -198,7 +191,7 @@ def get_build_tag():
     gtag = subprocess.run(['git', 'tag', '--points-at', 'HEAD'],
                           check=True, stdout=subprocess.PIPE)
     # We expect <today> followed by an optional dash and sequence number.
-    date_re = re.compile(r'{}(-[0-9]+)?'.format(today))
+    date_re = re.compile(rf'^{re.escape(today)}(-[0-9]+)?$')
     last_seq = 0
     today_found = False
     for tag in gtag.stdout.splitlines():
