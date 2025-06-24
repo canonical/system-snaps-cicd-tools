@@ -65,9 +65,9 @@ runs:
       with:
         name: ${{ env.SNAP_NAME }}-snaps
         path: ${{ runner.temp }}/${{ env.SNAP_NAME }}_*.snap
-    - name: Publish the snaps to beta channel
+    - name: Publish the snaps to edge channel
       shell: bash
       run: |
         ref=${{ github.ref_name }}
         ./cicd/workflows/snap-publish.sh "${{ runner.temp }}" \
-            ${{ env.SNAP_NAME }} latest/beta
+            ${{ env.SNAP_NAME }} latest/edge
