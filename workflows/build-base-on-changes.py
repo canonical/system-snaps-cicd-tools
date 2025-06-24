@@ -231,13 +231,23 @@ def download_snaps(lp, builds, output_dir):
     for b in builds.entries:
         build = lp.load(b['self_link'])
         urls = build.getFileUrls()
-        if len(urls) != 1:
-            print('unexpected urls: {}'.format(urls))
-            os.exit(1)
-        _logger.debug('Downloading snap from {}'.format(urls[0]))
-        snap_file = urls[0].rsplit('/', 1)[-1]
-        snap_path = os.path.join(output_dir, snap_file)
-        urllib.request.urlretrieve(urls[0], snap_path)
+        if len(urls) == 0:
+            print('ERROR: no built files found')
+            return False
+        snap_found = False
+        for url in urls:
+            if not url.endswith('.snap'):
+                continue
+            _logger.debug('Downloading snap from {}'.format(url))
+            snap_file = url.rsplit('/', 1)[-1]
+            snap_path = os.path.join(output_dir, snap_file)
+            urllib.request.urlretrieve(url, snap_path)
+            snap_found = True
+        if not snap_found:
+            print('No snap found after finishing build in {}'.format(url))
+            return False
+
+    return True
 
 
 # Builds in lp the snap recipe and downloads the built snaps to output_dir,
@@ -271,7 +281,7 @@ def build_and_download(lp, snap, output_dir, dry_run):
 
         if request.status == 'Failed':
             print('Cannot start builds, request failed')
-            os.exit(1)
+            sys.exit(1)
         # Must be 'Completed'
         print('Request builds sucessful')
         break
@@ -307,8 +317,9 @@ def build_and_download(lp, snap, output_dir, dry_run):
             success = False
 
     if success:
-        download_snaps(lp, builds, output_dir)
-    else:
+        success = download_snaps(lp, builds, output_dir)
+
+    if not success:
         _logger.debug('Removing tag {}'.format(tag))
         subprocess.run(['git', 'push', 'origin', ':'+tag], check=True)
         subprocess.run(['git', 'tag', '--delete', tag], check=True)
