@@ -43,7 +43,7 @@ runs:
         set -x
         printf "Releasing from %s\n" "${{ github.ref_name }}"
         sudo DEBIAN_FRONTEND=noninteractive apt-get install yq -yqq
-        snap_name=$(yq .name snapcraft-yaml)
+        snap_name=$(yq .name snapcraft.yaml)
         if [ "$snap_name" = core ]; then
             series=''
         else
