@@ -47,7 +47,7 @@ runs:
         if [ "$snap_name" = core ]; then
             series=''
         else
-            series=${snap_name##*-}
+            series=${snap_name#core}
         fi
 
         ./cicd/workflows/build-base-on-changes.py --output-dir="${{ runner.temp }}" --debug "$series"
