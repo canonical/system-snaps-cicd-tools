@@ -54,18 +54,26 @@ runs:
 
         # TODO run spread tests on built snaps before publishing
 
+        shopt -s nullglob
+        SNAP_NAME=
         for s in "${{ runner.temp }}"/*_*.snap; do
             s=${s##*/}
             SNAP_NAME=${s%%_*}
             break
         done
+        shopt -u nullglob
+        if [ -z "$SNAP_NAME" ]; then
+            printf "No build has been triggered\n"
+        fi
         echo "SNAP_NAME=$SNAP_NAME" >> $GITHUB_ENV
     - name: Upload artifacts
+      if: ${{ env.SNAP_NAME != '' }}
       uses: actions/upload-artifact@v4
       with:
         name: ${{ env.SNAP_NAME }}-snaps
         path: ${{ runner.temp }}/${{ env.SNAP_NAME }}_*.snap
     - name: Publish the snaps to edge channel
+      if: ${{ env.SNAP_NAME != '' }}
       shell: bash
       run: |
         ref=${{ github.ref_name }}
