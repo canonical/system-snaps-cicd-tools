@@ -13,10 +13,11 @@ inputs:
     required: false
     type: string
     default: ""
-  base:
-    description: Base to be released
-    required: true
+  branch:
+    description: Branch to release from
+    required: false
     type: string
+    default: "${{ github.ref_name }}"
 
 runs:
   using: "composite"
@@ -29,7 +30,7 @@ runs:
     - name: Checking out
       uses: actions/checkout@v4
       with:
-        ref: core${{ inputs.base }}
+        ref: ${{ inputs.branch }}
         # We need the full history and tags to create the changelog
         fetch-depth: 0
     - name: Checking out CICD scripts
@@ -45,7 +46,7 @@ runs:
         SNAPCRAFT_CHANNEL: ${{ inputs.snapcraft_channel }}
       run: |
         set -x
-        printf "Releasing from %s\n" "${{ inputs.base }}"
+        printf "Releasing from %s\n" branch "${{ inputs.branch }}"
         sudo DEBIAN_FRONTEND=noninteractive apt-get install yq -yqq
         snap_name=$(yq -r .name snapcraft.yaml)
         if [ "$snap_name" = core ]; then
