@@ -65,6 +65,7 @@ runs:
       shell: bash
       run: |
         printf "Running spread tests\n"
+        mkdir -p ~/bin
         wget -q https://storage.googleapis.com/snapd-spread-tests/spread/spread-plus-amd64.tar.gz \
             -O - | tar xz
         mv spread ~/bin/spread
