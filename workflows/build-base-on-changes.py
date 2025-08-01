@@ -399,8 +399,9 @@ def main():
     # wait too much to do a retry. See check_packages_changed retry code.
     socket.setdefaulttimeout(60)
 
-    branch = subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
-                            check=True, stdout=subprocess.PIPE)
+    branch_proc = subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+                                 check=True, stdout=subprocess.PIPE)
+    branch = branch_proc.stdout.decode("utf-8").rstrip()
 
     # policies are called to determine if we need to trigger a build
     policies = []
