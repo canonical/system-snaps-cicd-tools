@@ -100,12 +100,7 @@ snap_store_login()
     # No need to log-in anymore as we use SNAPCRAFT_STORE_CREDENTIALS.
     # However, we print id information here as that includes expiration
     # date for the credentials, which can be useful.
-    _run_snapcraft whoami
-}
-
-_run_snapcraft()
-{
-    snapcraft "$@"
+    snapcraft whoami
 }
 
 # Logout of the snap store
@@ -132,7 +127,11 @@ push_and_release_snap()
 
     cd "$snaps_d"
     for snap_file in "$snap_n"_*.snap; do
-        _run_snapcraft upload "$snap_file" --release "$channels"
+        # We go on even if there are failures, as these happen usually because
+        # of review-tools and we want to still upload all arches as we will
+        # most probably ask for store approval anyway.
+        # TODO maybe make the workflow fail right after finishing to note this?
+        snapcraft upload "$snap_file" --release "$channels" || true
     done
 )
 
