@@ -23,6 +23,8 @@ SNAP_API = \
     'https://api.launchpad.net/devel/~ubuntu-core-service/+snap/core{}'
 CORE_SNAP_API = \
     'https://api.launchpad.net/devel/~snappy-dev/+snap/core{}'
+SNAP_FIPS_API = \
+    'https://api.launchpad.net/devel/~fips-cc-stig/fips-cc-stig/+snap/core{}-fips'
 
 
 _logger = logging.getLogger('ubuntu-image')
@@ -60,7 +62,7 @@ def package_versions_from_file(pkgs_p, snap2version):
             update_snap2version(snap2version, package, version)
 
 
-def check_packages_changed(core_series):
+def check_packages_changed(core_series, fips):
     # Note that we consider here only amd64, at the moment there are no
     # differences in packages primed in bases depending on arches.
     changed = False
@@ -94,7 +96,6 @@ def check_packages_changed(core_series):
         # ESM categories:
         # infra-security,infra-updates,apps-updates,apps-security
         # Reference: https://github.com/canonical/se-misc/tree/main/esmadison
-        # TODO fips when we consider fips snaps here
         url_tmpl = 'https://esm.ubuntu.com/{}/' + \
             'ubuntu/dists/{}/main/binary-amd64/Packages.gz'
         for cat in 'infra', 'apps':
@@ -102,6 +103,13 @@ def check_packages_changed(core_series):
                 suite = '-'.join([series, cat, pocket])
                 urls.append(url_tmpl.format(cat, suite))
                 pkg_files.append('-'.join([suite, 'packages.gz']))
+
+        if fips: 
+            fips_url_tmpl = 'https://private-ppa.launchpadcontent.net/' + \
+                'fips-cc-stig/fips-under-certification/ubuntu/dists/{}/' + \
+                'main/binary-amd64/Packages.gz'
+            urls.append(fips_url_tmpl.format(series))
+            pkg_files.append('fips-packages.gz')
 
         # PPAs used in the build
         ppas = []
@@ -345,6 +353,8 @@ def main():
         '--no-git-check', dest='no_git_check', action='store_true')
     parser.add_argument(
         '--dry-run', dest='dry_run', action='store_true')
+    parser.add_argument(
+        '--fips', dest='fips', action='store_true')
 
     args = parser.parse_args()
 
@@ -388,6 +398,9 @@ def main():
     recipe_tmpl = SNAP_API
     if args.core_series == '':
         recipe_tmpl = CORE_SNAP_API
+    elif args.fips:
+        recipe_tmpl = SNAP_FIPS_API
+    
     recipe = recipe_tmpl.format(args.core_series)
     print('building snap recipe', recipe)
     snap = lp.load(recipe)
@@ -407,7 +420,7 @@ def main():
     policies = []
     if not args.no_git_check:
         policies.append(lambda: check_branch_changed(branch))
-    policies.append(lambda: check_packages_changed(args.core_series))
+    policies.append(lambda: check_packages_changed(args.core_series, args.fips))
 
     ret = 0
     for policy in policies:
