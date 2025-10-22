@@ -18,6 +18,11 @@ inputs:
     required: false
     type: string
     default: "${{ github.ref_name }}"
+  fips:
+    description: Whether this is a FIPS build variant
+    required: false
+    type: boolean
+    default: false
 
 runs:
   using: "composite"
@@ -55,7 +60,12 @@ runs:
             series=${snap_name#core}
         fi
 
-        ./cicd/workflows/build-base-on-changes.py --output-dir="${{ runner.temp }}" --debug "$series"
+        IS_FIPS=""
+        if [ "${{ inputs.fips }}" -eq "true" ]; then
+          IS_FIPS="--fips"
+        fi
+
+        ./cicd/workflows/build-base-on-changes.py --output-dir="${{ runner.temp }}" --debug "$series" "$IS_FIPS"
 
         # TODO run spread tests on built snaps before publishing
 
