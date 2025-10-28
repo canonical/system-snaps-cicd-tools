@@ -65,7 +65,7 @@ runs:
           IS_FIPS="--fips"
         fi
 
-        ./cicd/workflows/build-base-on-changes.py --output-dir="${{ runner.temp }}" --debug "$series" "$IS_FIPS"
+        ./cicd/workflows/build-base-on-changes.py --output-dir="${{ runner.temp }}" --debug "$series" $IS_FIPS
 
         # TODO run spread tests on built snaps before publishing
 
