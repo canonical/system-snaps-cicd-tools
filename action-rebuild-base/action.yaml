@@ -61,7 +61,7 @@ runs:
         fi
 
         IS_FIPS=""
-        if [ "${{ inputs.fips }}" -eq "true" ]; then
+        if [ "${{ inputs.fips }}" = true ]; then
           IS_FIPS="--fips"
         fi
 
