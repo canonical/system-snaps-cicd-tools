@@ -52,7 +52,7 @@ def get_fips_url(core_series: str) -> str:
     templ = 'https://private-ppa.launchpadcontent.net/' + \
         'fips-cc-stig/fips-under-certification/ubuntu/dists/{}/' + \
         'main/binary-amd64/Packages.gz'
-    if core_series in fips_certified_map:                
+    if core_series in fips_certified_map:
         templ = 'https://private-ppa.launchpadcontent.net/' + \
             'ubuntu-advantage/pro-fips-updates/ubuntu/dists/{}/' + \
             'main/binary-amd64/Packages.gz'
@@ -420,7 +420,7 @@ def main():
             recipe_tmpl = SNAP_FIPS_API
         else:
             recipe_tmpl = SNAP_FIPS_CERTIFIED_API
-    
+
     recipe = recipe_tmpl.format(args.core_series)
     print('building snap recipe', recipe)
     snap = lp.load(recipe)
