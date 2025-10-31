@@ -417,9 +417,9 @@ def main():
         recipe_tmpl = CORE_SNAP_API
     elif args.fips:
         if args.core_series in fips_certified_map:
-            recipe_tmpl = SNAP_FIPS_API
-        else:
             recipe_tmpl = SNAP_FIPS_CERTIFIED_API
+        else:
+            recipe_tmpl = SNAP_FIPS_API
 
     recipe = recipe_tmpl.format(args.core_series)
     print('building snap recipe', recipe)
