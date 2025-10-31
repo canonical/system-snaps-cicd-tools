@@ -23,6 +23,10 @@ SNAP_API = \
     'https://api.launchpad.net/devel/~ubuntu-core-service/+snap/core{}'
 CORE_SNAP_API = \
     'https://api.launchpad.net/devel/~snappy-dev/+snap/core{}'
+# The snaps that need ubuntu-advantage fips-updates ppa must use these recipes
+SNAP_FIPS_CERTIFIED_API = \
+    'https://launchpad.net/~ubuntu-advantage/fips-cc-stig/+snap/core{}-fips'
+# The snaps that need the modules-under-certification fips ppa use these recipes
 SNAP_FIPS_API = \
     'https://api.launchpad.net/devel/~fips-cc-stig/fips-cc-stig/+snap/core{}-fips'
 
@@ -37,6 +41,22 @@ series_map = {
     "22": "jammy",
     "24": "noble",
 }
+
+# The map of bases that are fips certified, they move to ubuntu-advantage.
+fips_certified_map = {
+    "22": "jammy"
+}
+
+
+def get_fips_url(core_series: str) -> str:
+    templ = 'https://private-ppa.launchpadcontent.net/' + \
+        'fips-cc-stig/fips-under-certification/ubuntu/dists/{}/' + \
+        'main/binary-amd64/Packages.gz'
+    if core_series in fips_certified_map:                
+        templ = 'https://private-ppa.launchpadcontent.net/' + \
+            'ubuntu-advantage/pro-fips-updates/ubuntu/dists/{}/' + \
+            'main/binary-amd64/Packages.gz'
+    return templ.format(series_map[core_series])
 
 
 def update_snap2version(snap2version, package, version):
@@ -104,11 +124,8 @@ def check_packages_changed(core_series, fips):
                 urls.append(url_tmpl.format(cat, suite))
                 pkg_files.append('-'.join([suite, 'packages.gz']))
 
-        if fips: 
-            fips_url_tmpl = 'https://private-ppa.launchpadcontent.net/' + \
-                'fips-cc-stig/fips-under-certification/ubuntu/dists/{}/' + \
-                'main/binary-amd64/Packages.gz'
-            urls.append(fips_url_tmpl.format(series))
+        if fips:
+            urls.append(get_fips_url(core_series))
             pkg_files.append('fips-packages.gz')
 
         # PPAs used in the build
@@ -399,7 +416,10 @@ def main():
     if args.core_series == '':
         recipe_tmpl = CORE_SNAP_API
     elif args.fips:
-        recipe_tmpl = SNAP_FIPS_API
+        if args.core_series in fips_certified_map:
+            recipe_tmpl = SNAP_FIPS_API
+        else:
+            recipe_tmpl = SNAP_FIPS_CERTIFIED_API
     
     recipe = recipe_tmpl.format(args.core_series)
     print('building snap recipe', recipe)
