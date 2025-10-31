@@ -71,7 +71,7 @@ def package_versions_from_file(pkgs_p, snap2version):
             update_snap2version(snap2version, package, version)
 
 
-def check_packages_changed(core_series, fips):
+def check_packages_changed(core_series):
     # Note that we consider here only amd64, at the moment there are no
     # differences in packages primed in bases depending on arches.
     changed = False
@@ -429,7 +429,7 @@ def main():
     policies = []
     if not args.no_git_check:
         policies.append(lambda: check_branch_changed(branch))
-    policies.append(lambda: check_packages_changed(args.core_series, args.fips))
+    policies.append(lambda: check_packages_changed(args.core_series))
 
     ret = 0
     for policy in policies:
