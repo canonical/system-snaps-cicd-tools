@@ -25,7 +25,7 @@ CORE_SNAP_API = \
     'https://api.launchpad.net/devel/~snappy-dev/+snap/core{}'
 # The snaps that need ubuntu-advantage fips-updates ppa must use these recipes
 SNAP_FIPS_CERTIFIED_API = \
-    'https://launchpad.net/~ubuntu-advantage/fips-cc-stig/+snap/core{}-fips'
+    'https://api.launchpad.net/devel/~ubuntu-advantage/fips-cc-stig/+snap/core{}-fips'
 # The snaps that need the modules-under-certification fips ppa use these recipes
 SNAP_FIPS_API = \
     'https://api.launchpad.net/devel/~fips-cc-stig/fips-cc-stig/+snap/core{}-fips'
