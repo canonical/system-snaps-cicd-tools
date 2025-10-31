@@ -48,17 +48,6 @@ fips_certified_map = {
 }
 
 
-def get_fips_url(core_series: str) -> str:
-    templ = 'https://private-ppa.launchpadcontent.net/' + \
-        'fips-cc-stig/fips-under-certification/ubuntu/dists/{}/' + \
-        'main/binary-amd64/Packages.gz'
-    if core_series in fips_certified_map:
-        templ = 'https://private-ppa.launchpadcontent.net/' + \
-            'ubuntu-advantage/pro-fips-updates/ubuntu/dists/{}/' + \
-            'main/binary-amd64/Packages.gz'
-    return templ.format(series_map[core_series])
-
-
 def update_snap2version(snap2version, package, version):
     if version.isspace() and package.isspace():
         return
@@ -124,9 +113,9 @@ def check_packages_changed(core_series, fips):
                 urls.append(url_tmpl.format(cat, suite))
                 pkg_files.append('-'.join([suite, 'packages.gz']))
 
-        if fips:
-            urls.append(get_fips_url(core_series))
-            pkg_files.append('fips-packages.gz')
+        # TODO: Maybe consider FIPS PPA in the future, but that needs additional credientals for
+        # the runner that does the check as those are protected private PPAs. Those packages rarely
+        # change (and its very few) and should it be needed we can trigger a manual rebuild.
 
         # PPAs used in the build
         ppas = []
