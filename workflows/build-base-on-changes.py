@@ -216,7 +216,7 @@ def get_build_tag(branch):
         m = re.match(date_re, tag)
         if m:
             today_found = True
-            if m.group(1) != '':
+            if m.group(1) != None:
                 # Remove the dash and get sequence number
                 seq = int(m.group(1)[1:])
                 if seq > last_seq:
