@@ -258,8 +258,11 @@ def download_snaps(lp, builds, output_dir):
             _logger.debug('Downloading snap from {}'.format(url))
             snap_file = url.rsplit('/', 1)[-1]
             snap_path = os.path.join(output_dir, snap_file)
-            urllib.request.urlretrieve(url, snap_path)
-            snap_found = True
+            try:
+                urllib.request.urlretrieve(url, snap_path)
+                snap_found = True
+            except Exception as e:
+                print('ERROR: failed to download {}: {}'.format(url, e))
         if not snap_found:
             print('No snap found after finishing build in {}'.format(url))
             return False
