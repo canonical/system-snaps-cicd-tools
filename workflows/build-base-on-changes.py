@@ -18,6 +18,8 @@ from datetime import datetime
 from debian import deb822
 from launchpadlib.launchpad import Launchpad
 
+import se_utils
+
 
 SNAP_API = \
     'https://api.launchpad.net/devel/~ubuntu-core-service/+snap/core{}'
@@ -246,27 +248,8 @@ def is_build_running(snap):
 # builds is a collection of snap_build objects
 def download_snaps(lp, builds, output_dir):
     for b in builds.entries:
-        build = lp.load(b['self_link'])
-        urls = build.getFileUrls()
-        if len(urls) == 0:
-            print('ERROR: no built files found')
+        if not se_utils.download_snap_build(lp, b['self_link'], output_dir):
             return False
-        snap_found = False
-        for url in urls:
-            if not url.endswith('.snap'):
-                continue
-            _logger.debug('Downloading snap from {}'.format(url))
-            snap_file = url.rsplit('/', 1)[-1]
-            snap_path = os.path.join(output_dir, snap_file)
-            try:
-                urllib.request.urlretrieve(url, snap_path)
-                snap_found = True
-            except Exception as e:
-                print('ERROR: failed to download {}: {}'.format(url, e))
-        if not snap_found:
-            print('No snap found after finishing build in {}'.format(url))
-            return False
-
     return True
 
 
@@ -379,23 +362,27 @@ def main():
         lp = Launchpad.login_anonymously(
             'core-builder', 'production', version='devel')
     else:
+        #def login_f(creds_f):
+        #    return Launchpad.login_with(
+        #        'core-builder', 'production', version='devel',
+        #        credentials_file=creds_f)
         def login_f(creds_f):
             return Launchpad.login_with(
-                'core-builder', 'production', version='devel',
-                credentials_file=creds_f)
+                'the-meulengracht', 'production', version='devel')
         creds_env = os.environ.get("LP_CREDENTIALS")
-        if creds_env and creds_env != '':
-            _logger.debug("using credentials from LP_CREDENTIALS env var")
-            with tempfile.NamedTemporaryFile() as credential_store_path:
-                credential_store_path.write(creds_env.encode("utf-8"))
-                credential_store_path.flush()
-                lp = login_f(credential_store_path.name)
-        else:
-            _logger.debug("no LP_CREDENTIALS environment variable")
-            if not os.path.exists(args.lp_credentials):
-                print('Credentials not found, no LP_CREDENTIALS var or file')
-                sys.exit(1)
-            lp = login_f(args.lp_credentials)
+        #if creds_env and creds_env != '':
+        #    _logger.debug("using credentials from LP_CREDENTIALS env var")
+        #    with tempfile.NamedTemporaryFile() as credential_store_path:
+        #        credential_store_path.write(creds_env.encode("utf-8"))
+        #        credential_store_path.flush()
+        #        lp = login_f(credential_store_path.name)
+        #else:
+        #    _logger.debug("no LP_CREDENTIALS environment variable")
+        #    if not os.path.exists(args.lp_credentials):
+        #        print('Credentials not found, no LP_CREDENTIALS var or file')
+        #        sys.exit(1)
+        #    lp = login_f(args.lp_credentials)
+        lp = login_f("")
 
     print('Checking core{}'.format(args.core_series))
 
