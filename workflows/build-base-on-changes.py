@@ -362,27 +362,23 @@ def main():
         lp = Launchpad.login_anonymously(
             'core-builder', 'production', version='devel')
     else:
-        #def login_f(creds_f):
-        #    return Launchpad.login_with(
-        #        'core-builder', 'production', version='devel',
-        #        credentials_file=creds_f)
         def login_f(creds_f):
             return Launchpad.login_with(
-                'the-meulengracht', 'production', version='devel')
+                'core-builder', 'production', version='devel',
+                credentials_file=creds_f)
         creds_env = os.environ.get("LP_CREDENTIALS")
-        #if creds_env and creds_env != '':
-        #    _logger.debug("using credentials from LP_CREDENTIALS env var")
-        #    with tempfile.NamedTemporaryFile() as credential_store_path:
-        #        credential_store_path.write(creds_env.encode("utf-8"))
-        #        credential_store_path.flush()
-        #        lp = login_f(credential_store_path.name)
-        #else:
-        #    _logger.debug("no LP_CREDENTIALS environment variable")
-        #    if not os.path.exists(args.lp_credentials):
-        #        print('Credentials not found, no LP_CREDENTIALS var or file')
-        #        sys.exit(1)
-        #    lp = login_f(args.lp_credentials)
-        lp = login_f("")
+        if creds_env and creds_env != '':
+            _logger.debug("using credentials from LP_CREDENTIALS env var")
+            with tempfile.NamedTemporaryFile() as credential_store_path:
+                credential_store_path.write(creds_env.encode("utf-8"))
+                credential_store_path.flush()
+                lp = login_f(credential_store_path.name)
+        else:
+            _logger.debug("no LP_CREDENTIALS environment variable")
+            if not os.path.exists(args.lp_credentials):
+                print('Credentials not found, no LP_CREDENTIALS var or file')
+                sys.exit(1)
+            lp = login_f(args.lp_credentials)
 
     print('Checking core{}'.format(args.core_series))
 
