@@ -164,18 +164,20 @@ def download_snap_build(lp_handle, buildUrl, destination):
     try:
         snap_build = lp_handle.load(buildUrl)
         urls = snap_build.getFileUrls()
-        if len(urls):
-            for u in urls:
-                if not u.endswith('.snap'):
-                    continue
-                print("Downloading snap from %s ..." % u)
-                if not os.path.exists(destination):
-                    os.makedirs(destination)
-                path = os.path.join(destination, os.path.basename(u))
-                # reuse credentials from launchpadlib to download the snap
-                contents = lp_handle._browser.get(u.replace("https://launchpad.net/", str(lp_handle._root_uri)))
-                with open(path, "wb") as out_file:
-                    out_file.write(contents)
+        if len(urls) == 0:
+            raise Exception("No files found for snap build: %s" % buildUrl)
+        
+        for u in urls:
+            if not u.endswith('.snap'):
+                continue
+            print("Downloading snap from %s ..." % u)
+            if not os.path.exists(destination):
+                os.makedirs(destination)
+            path = os.path.join(destination, os.path.basename(u))
+            # reuse credentials from launchpadlib to download the snap
+            contents = lp_handle._browser.get(u.replace("https://launchpad.net/", str(lp_handle._root_uri)))
+            with open(path, "wb") as out_file:
+                out_file.write(contents)
     except HTTPError as ex:
         print("Could not retrieve snap for {}"
                 " (was there an LP timeout?): {}".format(buildUrl, ex))
