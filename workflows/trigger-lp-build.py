@@ -323,22 +323,13 @@ def main(argv):
                     print("Could not get build summary for {} "
                           "(was there an LP timeout?): {}".format(success, ex))
 
-            try:
-                snap_build = launchpad.load(triggered_build_urls[success])
-                urls = snap_build.getFileUrls()
-                if len(urls):
-                    for u in urls:
-                        print("Downloading snap from %s ..." % u)
-                        response = url_pool.request('GET', u)
-                        if not os.path.exists(results_dir):
-                            os.makedirs(results_dir)
-                        path = os.path.join(results_dir, os.path.basename(u))
-                        with open(path, "wb") as out_file:
-                            out_file.write(response.data)
-            except Exception as ex:
-                print("Could not retrieve snap build data for {}"
-                      "(was there an LP timeout?): {}".format(build, ex))
-                continue
+            # attempt to download the file
+            downloaded = se_utils.download_snap_build(
+                launchpad, triggered_build_urls[success],
+                results_dir)
+            if not downloaded:
+                print("WARNING: Could not download snap build for id: {}".
+                      format(success))
 
     if ephemeral_build:
         snap.lp_delete()

@@ -26,7 +26,6 @@ from lazr.restfulclient.errors import HTTPError
 from launchpadlib.launchpad import Launchpad
 from launchpadlib.credentials import UnencryptedFileCredentialStore
 
-
 class LaunchpadVote():
     APPROVE = 'Approve'
     DISAPPROVE = 'Disapprove'
@@ -153,3 +152,34 @@ def get_branch_handle_from_url(lp_handle, url):
                             'lp://staging/')
         print('fetching branch: ' + name)
         return lp_handle.branches.getByUrl(url=name)
+
+
+def download_snap_build(lp_handle, buildUrl, destination):
+    """ Download a snap build from a url to a destination.
+    If the download fails, do not raise an exception, just return False.
+    :param buildUrl: url of the snap build to download
+    :param destination: path to save the downloaded file
+    :return: True if the download was successful, False otherwise
+    """
+    try:
+        snap_build = lp_handle.load(buildUrl)
+        urls = snap_build.getFileUrls()
+        if len(urls) == 0:
+            raise Exception("No files found for snap build: %s" % buildUrl)
+        
+        for u in urls:
+            if not u.endswith('.snap'):
+                continue
+            print("Downloading snap from %s ..." % u)
+            if not os.path.exists(destination):
+                os.makedirs(destination)
+            path = os.path.join(destination, os.path.basename(u))
+            # reuse credentials from launchpadlib to download the snap
+            contents = lp_handle._browser.get(u.replace("https://launchpad.net/", str(lp_handle._root_uri)))
+            with open(path, "wb") as out_file:
+                out_file.write(contents)
+    except HTTPError as ex:
+        print("Could not retrieve snap for {}"
+                " (was there an LP timeout?): {}".format(buildUrl, ex))
+        return False
+    return True

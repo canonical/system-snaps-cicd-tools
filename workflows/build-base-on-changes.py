@@ -18,6 +18,8 @@ from datetime import datetime
 from debian import deb822
 from launchpadlib.launchpad import Launchpad
 
+import se_utils
+
 
 SNAP_API = \
     'https://api.launchpad.net/devel/~ubuntu-core-service/+snap/core{}'
@@ -246,24 +248,8 @@ def is_build_running(snap):
 # builds is a collection of snap_build objects
 def download_snaps(lp, builds, output_dir):
     for b in builds.entries:
-        build = lp.load(b['self_link'])
-        urls = build.getFileUrls()
-        if len(urls) == 0:
-            print('ERROR: no built files found')
+        if not se_utils.download_snap_build(lp, b['self_link'], output_dir):
             return False
-        snap_found = False
-        for url in urls:
-            if not url.endswith('.snap'):
-                continue
-            _logger.debug('Downloading snap from {}'.format(url))
-            snap_file = url.rsplit('/', 1)[-1]
-            snap_path = os.path.join(output_dir, snap_file)
-            urllib.request.urlretrieve(url, snap_path)
-            snap_found = True
-        if not snap_found:
-            print('No snap found after finishing build in {}'.format(url))
-            return False
-
     return True
 
 
