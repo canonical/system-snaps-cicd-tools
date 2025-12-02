@@ -81,7 +81,7 @@ def check_packages_changed(core_series, fips):
     with tempfile.TemporaryDirectory() as base_tmpd:
         # Download edge snap, extract manifest
         base = 'core{}'.format(core_series)
-        channel = 'edge'
+        channel = 'latest/edge'
         if fips:
             channel = 'fips-updates/edge'
         subprocess.run(['snap', 'download', '--channel=' + channel, '--basename', base,
