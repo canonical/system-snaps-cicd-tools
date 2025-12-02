@@ -91,5 +91,10 @@ runs:
       if: ${{ env.SNAP_NAME != '' }}
       shell: bash
       run: |
+        CHANNEL="latest/edge"
+        if [ "${{ inputs.fips }}" = true ]; then
+          CHANNEL="fips-updates/edge"
+        fi
+
         ./cicd/workflows/snap-publish.sh "${{ runner.temp }}" \
-            ${{ env.SNAP_NAME }} latest/edge
+            ${{ env.SNAP_NAME }} $CHANNEL

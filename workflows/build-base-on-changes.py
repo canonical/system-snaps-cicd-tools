@@ -73,14 +73,17 @@ def package_versions_from_file(pkgs_p, snap2version):
             update_snap2version(snap2version, package, version)
 
 
-def check_packages_changed(core_series):
+def check_packages_changed(core_series, fips):
     # Note that we consider here only amd64, at the moment there are no
     # differences in packages primed in bases depending on arches.
     changed = False
     with tempfile.TemporaryDirectory() as base_tmpd:
         # Download edge snap, extract manifest
         base = 'core{}'.format(core_series)
-        subprocess.run(['snap', 'download', '--edge', '--basename', base,
+        channel = 'edge'
+        if fips:
+            channel = 'fips-updates/edge'
+        subprocess.run(['snap', 'download', '--channel=' + channel, '--basename', base,
                         '--target-directory', base_tmpd, base], check=True)
         sq_d = os.path.join(base_tmpd, base)
         base_p = os.path.join(base_tmpd, base + '.snap')
@@ -415,7 +418,7 @@ def main():
     policies = []
     if not args.no_git_check:
         policies.append(lambda: check_branch_changed(branch))
-    policies.append(lambda: check_packages_changed(args.core_series))
+    policies.append(lambda: check_packages_changed(args.core_series, args.fips))
 
     ret = 0
     for policy in policies:
