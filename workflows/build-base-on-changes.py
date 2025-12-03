@@ -178,7 +178,12 @@ def check_packages_changed(core_series, fips):
             if pkgName not in snap2version:
                 print('unexpected error, package {} from {} '
                       'not found in the archive'.format(pkgName, base))
-                sys.exit(1)
+                # sys.exit(1)
+                # unfortunately for FIPS builds some packages are missing from the
+                # archive (as they are in private PPAs), so we cannot error out
+                # TODO: remove this exception when we have added support for retrieving
+                # the FIPS PPA package list
+                continue
             if apt_pkg.version_compare(pkgVersion, snap2version[pkgName]) < 0:
                 print('change in {}: {} package version updated ({} -> {})'.
                       format(base, pkgName, pkgVersion, snap2version[pkgName]))
