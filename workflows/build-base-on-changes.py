@@ -42,12 +42,14 @@ series_map = {
     "20": "focal",
     "22": "jammy",
     "24": "noble",
+    "26": "resolute",
 }
 
 # The map of bases that are fips certified, they move to ubuntu-advantage.
 fips_certified_map = {
     "22": "jammy",
     "24": "noble",
+    "26": "resolute",
 }
 
 

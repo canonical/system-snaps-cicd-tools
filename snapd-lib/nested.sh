@@ -296,6 +296,10 @@ nested_is_classic_system() {
     test "$NESTED_TYPE" = "classic"
 }
 
+nested_is_core_26_system() {
+    os.query is-resolute
+}
+
 nested_is_core_24_system() {
     os.query is-noble
 }

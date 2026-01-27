@@ -63,7 +63,9 @@ def parseargs(argv):
 
 
 def get_series(base):
-    if base == "core24":
+    if base == "core26":
+        return "resolute"
+    elif base == "core24":
         return "noble"
     elif base == "core22":
         return "jammy"
