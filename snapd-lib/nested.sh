@@ -115,8 +115,8 @@ nested_uc20_transition_to_system_mode() {
     local recovery_system="$1"
     local mode="$2"
 
-    if ! nested_is_core_20_system && ! nested_is_core_22_system && ! nested_is_core24_system; then
-        echo "Transition can be done just on uc20, uc22 and uc24 systems, exiting..."
+    if ! nested_is_core_20_system && ! nested_is_core_22_system && ! nested_is_core24_system && ! nested_is_core26_system; then
+        echo "Transition can be done just on uc20, uc22, uc24, and uc26 systems, exiting..."
         exit 1
     fi
 
@@ -329,7 +329,7 @@ nested_refresh_to_new_core() {
             remote.exec "snap info core" | grep -E "^tracking: +latest/${NEW_CHANNEL}"
         fi
 
-        if nested_is_core_18_system || nested_is_core_20_system || nested_is_core_22_system || nested_is_core24_system; then
+        if nested_is_core_18_system || nested_is_core_20_system || nested_is_core_22_system || nested_is_core_24_system || nested_is_core_26_system; then
             remote.exec "sudo snap refresh snapd --${NEW_CHANNEL}"
             remote.exec "snap info snapd" | grep -E "^tracking: +latest/${NEW_CHANNEL}"
         else
@@ -806,7 +806,7 @@ nested_create_core_vm() {
 
     # Configure the user for the vm
     if [ "$NESTED_USE_CLOUD_INIT" = "true" ]; then
-        if nested_is_core_20_system || nested_is_core_22_system || nested_is_core24_system; then
+        if nested_is_core_20_system || nested_is_core_22_system || nested_is_core_24_system || nested_is_core_26_system; then
             nested_configure_cloud_init_on_core20_vm "$NESTED_IMAGES_DIR/$IMAGE_NAME"
         else
             nested_configure_cloud_init_on_core_vm "$NESTED_IMAGES_DIR/$IMAGE_NAME"
@@ -1091,7 +1091,7 @@ nested_start_core_vm_unit() {
         OVMF_CODE="secboot"
         OVMF_VARS="ms"
 
-        if nested_is_core_22_system || nested_is_core24_system; then
+        if nested_is_core_22_system || nested_is_core_24_system || nested_is_core_26_system; then
             wget https://storage.googleapis.com/snapd-spread-tests/dependencies/OVMF_CODE.secboot.fd
             mv OVMF_CODE.secboot.fd /usr/share/OVMF/OVMF_CODE.secboot.fd
             wget https://storage.googleapis.com/snapd-spread-tests/dependencies/OVMF_VARS.snakeoil.fd

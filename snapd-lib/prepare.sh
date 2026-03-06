@@ -61,6 +61,10 @@ ensure_jq() {
     elif is_test_target_core 24; then
         snap install --devmode --edge test-snapd-jq-core24
         snap alias test-snapd-jq-core24.jq jq
+    elif is_test_target_core 26; then
+        # TODO use 24 until 26
+        snap install --devmode --edge test-snapd-jq-core24
+        snap alias test-snapd-jq-core24.jq jq
     else
         snap install --devmode jq
     fi
@@ -316,6 +320,8 @@ setup_reflash_magic() {
         core_name="core22"
     elif is_test_target_core 24; then
         core_name="core24"
+    elif is_test_target_core 26; then
+        core_name="core26"
     fi
     # XXX: we get "error: too early for operation, device not yet
     # seeded or device model not acknowledged" here sometimes. To
@@ -366,6 +372,9 @@ setup_reflash_magic() {
     elif is_test_target_core 24; then
         repack_snapd_snap_with_run_mode_firstboot_tweaks "$IMAGE_HOME"
         cp "$TESTSLIB/assertions/ubuntu-core-24-amd64.model" "$IMAGE_HOME/pc.model"
+    elif is_test_target_core 26; then
+        repack_snapd_snap_with_run_mode_firstboot_tweaks "$IMAGE_HOME"
+        cp "$TESTSLIB/assertions/ubuntu-core-26-amd64.model" "$IMAGE_HOME/pc.model"
     else
         printf "ERROR: unsupported UC release\n"
         return 1
@@ -392,6 +401,8 @@ setup_reflash_magic() {
             BRANCH=22
         elif is_test_target_core 24; then
             BRANCH=24
+        elif is_test_target_core 26; then
+            BRANCH=26
         fi
         snap download --basename=pc-kernel --channel="${BRANCH}/${KERNEL_CHANNEL}" pc-kernel
         # make sure we have the snap
@@ -462,6 +473,8 @@ setup_reflash_magic() {
             BASE=core22
         elif is_test_target_core 24; then
             BASE=core24
+        elif is_test_target_core 26; then
+            BASE=core26
         fi
         snap download "${BASE}" --channel="$BASE_CHANNEL" --basename="${BASE}"
 
@@ -717,6 +730,8 @@ prepare_ubuntu_core() {
             rsync_snap="test-snapd-rsync-core22"
         elif is_test_target_core 24; then
             rsync_snap="test-snapd-rsync-core24"
+        elif is_test_target_core 26; then
+            rsync_snap="test-snapd-rsync-core26"
         fi
         snap install --devmode --edge "$rsync_snap"
         snap alias "$rsync_snap".rsync rsync
@@ -743,6 +758,8 @@ prepare_ubuntu_core() {
             cache_snaps test-snapd-sh-core22
         elif is_test_target_core 24; then
             cache_snaps test-snapd-sh-core24
+        elif is_test_target_core 26; then
+            cache_snaps test-snapd-sh-core26
         fi
     fi
 

@@ -23,6 +23,8 @@ execute: |
         test "$(snaps.name snap-suffix)" = "-core22"
     elif os.query is-core24; then
         test "$(snaps.name snap-suffix)" = "-core24"
+    elif os.query is-core26; then
+        test "$(snaps.name snap-suffix)" = "-core26"
     else
         test -z "$(snaps.name snap-suffix)"
     fi
