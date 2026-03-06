@@ -34,6 +34,12 @@ get_google_image_url_for_vm() {
         ubuntu-24.04-arm-64*)
             echo "https://storage.googleapis.com/snapd-spread-tests/images/cloudimg/noble-server-cloudimg-arm64.img"
             ;;
+        ubuntu-26.04-64*)
+            echo "https://storage.googleapis.com/snapd-spread-tests/images/cloudimg/resolute-server-cloudimg-amd64.img"
+            ;;
+        ubuntu-26.04-arm-64*)
+            echo "https://storage.googleapis.com/snapd-spread-tests/images/cloudimg/resolute-server-cloudimg-arm64.img"
+            ;;
         *)
             echo "unsupported system"
             exit 1
@@ -70,6 +76,12 @@ get_ubuntu_image_url_for_vm() {
             ;;
         ubuntu-24.04-arm-64*)
             echo "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-arm64.img"
+            ;;
+        ubuntu-26.04-64*)
+            echo "https://cloud-images.ubuntu.com/resolute/current/resolute-server-cloudimg-amd64.img"
+            ;;
+        ubuntu-26.04-arm-64*)
+            echo "https://cloud-images.ubuntu.com/resolute/current/resolute-server-cloudimg-arm64.img"
             ;;
         *)
             echo "unsupported system"
