@@ -178,7 +178,7 @@ repeat_until_done() {
 # $1: name of variable where to store the interface name
 get_qemu_eth_iface() {
     local _net_dev
-    _net_dev=$(find /sys/class/net/ -print0 -type l | xargs -0 readlink |
+    _net_dev=$(find /sys/class/net/ -type l -print0 | xargs -0 readlink |
                    grep -v virtual | head -n 1)
     _net_dev=${_net_dev##*/}
     eval "$1"="$_net_dev"
