@@ -23,6 +23,19 @@ inputs:
     required: false
     type: boolean
     default: false
+  publish:
+    description: Whether to publish built snaps to the store
+    required: false
+    type: boolean
+    default: true
+
+outputs:
+  snap_name:
+    description: Name of the built snap (empty when no build was triggered)
+    value: ${{ steps.release.outputs.snap_name }}
+  snap_artifact:
+    description: Artifact basename used for uploaded snaps
+    value: ${{ steps.release.outputs.snap_artifact }}
 
 runs:
   using: "composite"
@@ -45,6 +58,7 @@ runs:
         ref: main
         path: cicd
     - name: Release
+      id: release
       shell: bash
       env:
         BUILD_ARCHITECTURES: ${{ inputs.architectures }}
@@ -84,16 +98,16 @@ runs:
         fi
         SNAP_ARTIFACT="$SNAP_NAME""$FIPS_SUFFIX"
 
-        echo "SNAP_NAME=$SNAP_NAME" >> $GITHUB_ENV
-        echo "SNAP_ARTIFACT=$SNAP_ARTIFACT" >> $GITHUB_ENV
+        echo "snap_name=$SNAP_NAME" >> "$GITHUB_OUTPUT"
+        echo "snap_artifact=$SNAP_ARTIFACT" >> "$GITHUB_OUTPUT"
     - name: Upload artifacts
-      if: ${{ env.SNAP_NAME != '' }}
+      if: ${{ steps.release.outputs.snap_name != '' }}
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ env.SNAP_ARTIFACT }}-snaps
-        path: ${{ runner.temp }}/${{ env.SNAP_NAME }}_*.snap
+        name: ${{ steps.release.outputs.snap_artifact }}-snaps
+        path: ${{ runner.temp }}/${{ steps.release.outputs.snap_name }}_*.snap
     - name: Publish the snaps to edge channel
-      if: ${{ env.SNAP_NAME != '' }}
+      if: ${{ steps.release.outputs.snap_name != '' && inputs.publish }}
       shell: bash
       run: |
         CHANNEL="latest/edge"
@@ -102,4 +116,4 @@ runs:
         fi
 
         ./cicd/workflows/snap-publish.sh "${{ runner.temp }}" \
-            ${{ env.SNAP_NAME }} $CHANNEL
+            ${{ steps.release.outputs.snap_name }} $CHANNEL
