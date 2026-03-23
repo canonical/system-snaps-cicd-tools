@@ -368,7 +368,8 @@ main()
     done
 
     # Run CI tests for core18+, using the just built snap
-    if [ "$base" != core ]; then
+    # TODO start using openstack instead of google backend so we can test again for cor26
+    if [ "$base" != core ] && [ "$base" != core26 ]; then
         cp "$build_d"/"$snap_name"_*_amd64.snap .
         spread google:
     fi
