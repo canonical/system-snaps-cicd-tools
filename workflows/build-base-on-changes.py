@@ -76,6 +76,9 @@ def package_versions_from_file(pkgs_p, snap2version):
 
 
 def check_packages_changed(core_series, fips):
+    # TODO use .wall for core26+, for the moment just force a rebuild
+    if int(core_series) >= 26:
+        return True
     # Note that we consider here only amd64, at the moment there are no
     # differences in packages primed in bases depending on arches.
     changed = False
