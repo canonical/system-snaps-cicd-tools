@@ -6,6 +6,8 @@
 snap_name=$1
 # Reference channel
 channel=${2:-22/stable}
+# Wait for service
+wait_for_service=${3:-yes}
 
 # Cleanup logs so we can just dump what has happened in the debug-each
 # step below after a test case ran.
@@ -21,9 +23,11 @@ snap_install_from_file "$snap_name" "$channel"
 # Wait for services shipped in the snap
 # ("leftover" variable needed so we get the first column only in "service")
 # shellcheck disable=SC2034
-while read -r service leftover
-do wait_for_systemd_service snap."$service"
-done < <(snap services "$snap_name" | tail -n +2)
+if [ "${wait_for_service}" = "yes" ]; then
+    while read -r service leftover
+    do wait_for_systemd_service snap."$service"
+    done < <(snap services "$snap_name" | tail -n +2)
+fi
 
 # For debugging dump all snaps and connected slots/plugs
 snap list
