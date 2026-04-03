@@ -18,16 +18,16 @@ inputs:
     required: false
     type: string
     default: "${{ github.ref_name }}"
-  fips:
-    description: Whether this is a FIPS build variant
-    required: false
-    type: boolean
-    default: false
   publish:
     description: Whether to publish built snaps to the store
     required: false
     type: boolean
     default: true
+  build-variant:
+    description: Variant to build, can be "regular", "fips" or "cloud-init"
+    required: false
+    type: string
+    default: regular
 
 outputs:
   snap_name:
@@ -66,6 +66,7 @@ runs:
       run: |
         set -x
         printf "Releasing from %s\n" branch "${{ inputs.branch }}"
+        BUILD_VARIANT=${{ inputs.base-variant }}
         sudo DEBIAN_FRONTEND=noninteractive apt-get install yq -yqq
         snap_name=$(yq -r .name snapcraft.yaml)
         if [ "$snap_name" = core ]; then
@@ -74,14 +75,12 @@ runs:
             series=${snap_name#core}
         fi
 
-        IS_FIPS=""
-        FIPS_SUFFIX=""
-        if [ "${{ inputs.fips }}" = true ]; then
-          IS_FIPS="--fips"
-          FIPS_SUFFIX=-fips
+        ARTIFACT_SUFFIX=""
+        if [ "$BUILD_VARIANT" != regular ]; then
+            ARTIFACT_SUFFIX=-"$BUILD_VARIANT"
         fi
 
-        ./cicd/workflows/build-base-on-changes.py --output-dir="${{ runner.temp }}" --debug "$series" $IS_FIPS
+        ./cicd/workflows/build-base-on-changes.py --output-dir="${{ runner.temp }}" --build-variant="$BUILD_VARIANT" --debug "$series"
 
         # TODO run spread tests on built snaps before publishing
 
@@ -96,7 +95,7 @@ runs:
         if [ -z "$SNAP_NAME" ]; then
             printf "No build has been triggered\n"
         fi
-        SNAP_ARTIFACT="$SNAP_NAME""$FIPS_SUFFIX"
+        SNAP_ARTIFACT="$SNAP_NAME""$ARTIFACT_SUFFIX"
 
         echo "snap_name=$SNAP_NAME" >> "$GITHUB_OUTPUT"
         echo "snap_artifact=$SNAP_ARTIFACT" >> "$GITHUB_OUTPUT"
@@ -111,8 +110,11 @@ runs:
       shell: bash
       run: |
         CHANNEL="latest/edge"
-        if [ "${{ inputs.fips }}" = true ]; then
+        BUILD_VARIANT=${{ inputs.base-variant }}
+        if [ "$BUILD_VARIANT" = fips ]; then
           CHANNEL="fips-updates/edge"
+        elif [ "$BUILD_VARIANT" = cloud-init]; then
+          CHANNEL="cloud-init/edge"
         fi
 
         ./cicd/workflows/snap-publish.sh "${{ runner.temp }}" \

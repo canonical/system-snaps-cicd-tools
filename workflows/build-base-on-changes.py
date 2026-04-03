@@ -23,6 +23,8 @@ import se_utils
 
 SNAP_API = \
     'https://api.launchpad.net/devel/~ubuntu-core-service/+snap/core{}'
+SNAP_CLOUD_INIT_API = \
+    'https://api.launchpad.net/devel/~ubuntu-core-service/+snap/core{}-cloud-init'
 CORE_SNAP_API = \
     'https://api.launchpad.net/devel/~snappy-dev/+snap/core{}'
 # The snaps that need ubuntu-advantage fips-updates ppa must use these recipes
@@ -75,7 +77,7 @@ def package_versions_from_file(pkgs_p, snap2version):
             update_snap2version(snap2version, package, version)
 
 
-def check_packages_changed(core_series, fips):
+def check_packages_changed(core_series, build_variant):
     # TODO use .wall for core26+, for the moment just force a rebuild
     if int(core_series) >= 26:
         return True
@@ -86,7 +88,9 @@ def check_packages_changed(core_series, fips):
         # Download edge snap, extract manifest
         base = 'core{}'.format(core_series)
         channel = 'latest/edge'
-        if fips:
+        if build_variant == "cloud-init":
+            channel = 'cloud-init/edge'
+        elif build_variant == "fips":
             channel = 'fips-updates/edge'
         subprocess.run(['snap', 'download', '--channel=' + channel, '--basename', base,
                         '--target-directory', base_tmpd, base], check=True)
@@ -359,7 +363,7 @@ def main():
     parser.add_argument(
         '--dry-run', dest='dry_run', action='store_true')
     parser.add_argument(
-        '--fips', dest='fips', action='store_true')
+        '--build-variant', dest='build_variant', default='')
 
     args = parser.parse_args()
 
@@ -403,7 +407,9 @@ def main():
     recipe_tmpl = SNAP_API
     if args.core_series == '':
         recipe_tmpl = CORE_SNAP_API
-    elif args.fips:
+    elif args.build_variant == "cloud-init":
+        recipe_tmpl = SNAP_CLOUD_INIT_API
+    elif args.build_variant == "fips":
         if args.core_series in fips_certified_map:
             recipe_tmpl = SNAP_FIPS_CERTIFIED_API
         else:
@@ -428,7 +434,7 @@ def main():
     policies = []
     if not args.no_git_check:
         policies.append(lambda: check_branch_changed(branch))
-    policies.append(lambda: check_packages_changed(args.core_series, args.fips))
+    policies.append(lambda: check_packages_changed(args.core_series, args.build_variant))
 
     ret = 0
     for policy in policies:
