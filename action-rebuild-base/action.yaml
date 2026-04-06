@@ -113,7 +113,7 @@ runs:
         BUILD_VARIANT=${{ inputs.build-variant }}
         if [ "$BUILD_VARIANT" = fips ]; then
           CHANNEL="fips-updates/edge"
-        elif [ "$BUILD_VARIANT" = cloud-init]; then
+        elif [ "$BUILD_VARIANT" = cloud-init ]; then
           CHANNEL="cloud-init/edge"
         fi
 
