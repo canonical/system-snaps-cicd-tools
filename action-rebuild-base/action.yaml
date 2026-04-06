@@ -66,7 +66,7 @@ runs:
       run: |
         set -x
         printf "Releasing from %s\n" branch "${{ inputs.branch }}"
-        BUILD_VARIANT=${{ inputs.base-variant }}
+        BUILD_VARIANT=${{ inputs.build-variant }}
         sudo DEBIAN_FRONTEND=noninteractive apt-get install yq -yqq
         snap_name=$(yq -r .name snapcraft.yaml)
         if [ "$snap_name" = core ]; then
@@ -110,7 +110,7 @@ runs:
       shell: bash
       run: |
         CHANNEL="latest/edge"
-        BUILD_VARIANT=${{ inputs.base-variant }}
+        BUILD_VARIANT=${{ inputs.build-variant }}
         if [ "$BUILD_VARIANT" = fips ]; then
           CHANNEL="fips-updates/edge"
         elif [ "$BUILD_VARIANT" = cloud-init]; then
