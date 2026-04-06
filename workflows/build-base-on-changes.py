@@ -202,13 +202,15 @@ def check_packages_changed(core_series, build_variant):
 
 # We know that the branch has changed if there are no date tags in HEAD. If we
 # find one, branch changes are already in some published snap.
-def check_branch_changed(branch):
+def check_branch_changed(branch, build_variant):
     gtag = subprocess.run(['git', 'tag', '--points-at', 'HEAD'],
                           check=True, stdout=subprocess.PIPE)
     # We expect <date><month><day> with an optional dash followed by a number,
-    # followed by _<branch>: 20250510_<branch>, 20263001_<branch>,
-    # 20250510-1_<branch> and 20263001-2_<branch> are valid.
-    date_re = re.compile(r'^[0-9]{8}(-[0-9]+)?_' + re.escape(branch) + r'$')
+    # followed by _<branch>[+<build_variant]: 20250510_<branch>,
+    # 20263001_<branch>+<build_variant, 20250510-1_<branch> and
+    # 20263001-2_<branch>+<build_variant are valid.
+    date_re = re.compile(r'^[0-9]{8}(-[0-9]+)?_' + re.escape(branch) +
+                         r'\+' + re.escape(build_variant) + r'$')
     for tag in gtag.stdout.splitlines():
         tag = tag.decode("utf-8")
         print('found tag', tag)
@@ -220,14 +222,14 @@ def check_branch_changed(branch):
 
 
 # Get tag that we will use in the build.
-def get_build_tag(branch):
+def get_build_tag(branch, build_variant):
     today = datetime.today().strftime('%Y%m%d')
     gtag = subprocess.run(['git', 'tag', '--points-at', 'HEAD'],
                           check=True, stdout=subprocess.PIPE)
     # We expect <today> followed by an optional dash and sequence number and by
-    # _<branch>.
+    # _<branch>[+<build_variant>].
     date_re = re.compile(
-        rf'^{re.escape(today)}(-[0-9]+)?_{re.escape(branch)}$')
+        rf'^{re.escape(today)}(-[0-9]+)?_{re.escape(branch)}\+{re.escape(build_variant)}$')
     last_seq = 0
     today_found = False
     for tag in gtag.stdout.splitlines():
@@ -242,9 +244,9 @@ def get_build_tag(branch):
                     last_seq = seq
 
     if today_found:
-        return today + '-' + str(last_seq + 1) + '_' + branch
+        return today + '-' + str(last_seq + 1) + '_' + branch + '+' + build_variant
 
-    return today + '_' + branch
+    return today + '_' + branch + '+' + build_variant
 
 
 def is_build_running(snap):
@@ -273,8 +275,8 @@ def download_snaps(lp, builds, output_dir):
 # Builds in lp the snap recipe and downloads the built snaps to output_dir,
 # unless dry_run is set, as in that case the function only prints a message.
 # Returns success of the operation.
-def build_and_download(lp, snap, branch, output_dir, dry_run):
-    tag = get_build_tag(branch)
+def build_and_download(lp, snap, branch, build_variant, output_dir, dry_run):
+    tag = get_build_tag(branch, build_variant)
     if dry_run:
         print('Would trigger new snap builds for {}, with tag {}.'.format(
             snap.name, tag))
@@ -433,7 +435,7 @@ def main():
     # policies are called to determine if we need to trigger a build
     policies = []
     if not args.no_git_check:
-        policies.append(lambda: check_branch_changed(branch))
+        policies.append(lambda: check_branch_changed(branch, args.build_variant))
     policies.append(lambda: check_packages_changed(args.core_series, args.build_variant))
 
     ret = 0
@@ -442,7 +444,7 @@ def main():
         if not policy():
             continue
 
-        if not build_and_download(lp, snap, branch,
+        if not build_and_download(lp, snap, branch, args.build_variant,
                                   args.output_dir, args.dry_run):
             ret = 1
         break
