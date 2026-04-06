@@ -272,6 +272,12 @@ def download_snaps(lp, builds, output_dir):
     return True
 
 
+def remove_tag(tag):
+    _logger.debug('Removing tag {}'.format(tag))
+    subprocess.run(['git', 'push', 'origin', ':'+tag], check=True)
+    subprocess.run(['git', 'tag', '--delete', tag], check=True)
+
+
 # Builds in lp the snap recipe and downloads the built snaps to output_dir,
 # unless dry_run is set, as in that case the function only prints a message.
 # Returns success of the operation.
@@ -303,6 +309,7 @@ def build_and_download(lp, snap, branch, build_variant, output_dir, dry_run):
 
         if request.status == 'Failed':
             print('Cannot start builds, request failed')
+            remove_tag(tag)
             sys.exit(1)
         # Must be 'Completed'
         print('Request builds sucessful')
@@ -340,11 +347,8 @@ def build_and_download(lp, snap, branch, build_variant, output_dir, dry_run):
 
     if success:
         success = download_snaps(lp, builds, output_dir)
-
-    if not success:
-        _logger.debug('Removing tag {}'.format(tag))
-        subprocess.run(['git', 'push', 'origin', ':'+tag], check=True)
-        subprocess.run(['git', 'tag', '--delete', tag], check=True)
+    else:
+        remove_tag(tag)
 
     return success
 
