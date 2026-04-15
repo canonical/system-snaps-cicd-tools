@@ -91,6 +91,43 @@ disable_refreshes() {
     snap remove --purge test-snapd-jq-core24
 }
 
+setup_snapd_proxy() {
+    if [ "${SNAPD_USE_PROXY:-}" != true ]; then
+        return
+    fi
+    restart=$1
+
+    mkdir -p /etc/systemd/system/snapd.service.d
+    cat <<EOF > /etc/systemd/system/snapd.service.d/proxy.conf
+[Service]
+Environment=HTTPS_PROXY=$HTTPS_PROXY HTTP_PROXY=$HTTP_PROXY https_proxy=$HTTPS_PROXY http_proxy=$HTTP_PROXY NO_PROXY=$NO_PROXY no_proxy=$NO_PROXY
+EOF
+
+    # We change the service configuration so reload and restart
+    # the units to get them applied (if requested)
+    systemctl daemon-reload
+    if [ "$restart" = true ]
+    then systemctl restart snapd.service
+    fi
+}
+
+setup_system_proxy() {
+    if [ "${SNAPD_USE_PROXY:-}" != true ]; then
+        return
+    fi
+
+    mkdir -p "$SNAPD_WORK_DIR"
+    cp -f /etc/environment "$SNAPD_WORK_DIR"/environment.bak
+    {
+        echo "HTTPS_PROXY=$HTTPS_PROXY"
+        echo "HTTP_PROXY=$HTTP_PROXY"
+        echo "https_proxy=$HTTPS_PROXY"
+        echo "http_proxy=$HTTP_PROXY"
+        echo "NO_PROXY=$NO_PROXY"
+        echo "no_proxy=$NO_PROXY"
+    } >> /etc/environment
+}
+
 repack_snapd_snap() {
     local TARGET="$1"
 
@@ -673,11 +710,16 @@ EOF
 
 # prepare_ubuntu_core will prepare ubuntu-core 16+
 prepare_ubuntu_core() {
+    # Configure the proxy in the system when it is required
+    setup_system_proxy
+
     # we are still a "classic" image, prepare the surgery
     if [ -e /var/lib/dpkg/status ]; then
         setup_reflash_magic
         REBOOT
     fi
+
+    setup_snapd_proxy true
 
     disable_journald_rate_limiting
     disable_journald_start_limiting
