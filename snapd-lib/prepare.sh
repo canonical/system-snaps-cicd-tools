@@ -719,7 +719,8 @@ prepare_ubuntu_core() {
         REBOOT
     fi
 
-    setup_snapd_proxy true
+    restart_snapd=true
+    setup_snapd_proxy "$restart_snapd"
 
     disable_journald_rate_limiting
     disable_journald_start_limiting
