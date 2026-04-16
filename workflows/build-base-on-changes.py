@@ -2,6 +2,7 @@
 
 import apt_pkg
 import gzip
+import json
 import logging
 import os
 import re
@@ -44,7 +45,7 @@ series_map = {
     "20": "focal",
     "22": "jammy",
     "24": "noble",
-    "26": "noble",
+    "26": "resolute",
 }
 
 # The map of bases that are fips certified, they move to ubuntu-advantage.
@@ -78,9 +79,10 @@ def package_versions_from_file(pkgs_p, snap2version):
 
 
 def check_packages_changed(core_series, build_variant):
-    # TODO use .wall for core26+, for the moment just force a rebuild
-    if int(core_series) >= 26:
-        return True
+    core_version = 16
+    if core_series != '':
+        core_version = int(core_series)
+
     # Note that we consider here only amd64, at the moment there are no
     # differences in packages primed in bases depending on arches.
     changed = False
@@ -96,14 +98,33 @@ def check_packages_changed(core_series, build_variant):
                         '--target-directory', base_tmpd, base], check=True)
         sq_d = os.path.join(base_tmpd, base)
         base_p = os.path.join(base_tmpd, base + '.snap')
-        dpkg_sq_p = 'usr/share/snappy/dpkg.yaml'
+
+        if core_version >= 26:
+            dpkg_sq_p = 'var/lib/chisel/manifest.wall'
+        else:
+            dpkg_sq_p = 'usr/share/snappy/dpkg.yaml'
+
         dpkg_p = os.path.join(sq_d, dpkg_sq_p)
         subprocess.run(['unsquashfs', '-d', sq_d, base_p, dpkg_sq_p],
                        check=True, stdout=subprocess.DEVNULL)
 
         # Load manifest
-        with open(dpkg_p, 'r') as dpkg_f:
-            dpkg = yaml.safe_load(dpkg_f)
+        if core_version >= 26:
+            # For wall, recreate a list of "package=version" as in dpkg.yaml.
+            # We can ignore the architecture as in the end we do not use it.
+            dpkg = {'packages': []}
+            p = subprocess.run(['zstdcat', dpkg_p], stdout=subprocess.PIPE, check=True)
+            for line in p.stdout.decode('utf-8').splitlines():
+                if not line.strip():
+                    continue
+                record = json.loads(line)
+                if record.get('kind') == 'package':
+                    pkg_name = record.get('name')
+                    if 'version' in record:
+                        dpkg['packages'].append(pkg_name + '=' + record['version'])
+        else:
+            with open(dpkg_p, 'r') as dpkg_f:
+                dpkg = yaml.safe_load(dpkg_f)
 
         # Download archive/esm packages files
         series = series_map.get(core_series)
@@ -133,9 +154,6 @@ def check_packages_changed(core_series, build_variant):
 
         # PPAs used in the build
         ppas = []
-        core_version = 16
-        if core_series != '':
-            core_version = int(core_series)
         # ucdev has packages only for 20 and 22
         if core_version == 20 or core_version == 22:
             ppas.append('ucdev/base-ppa')
