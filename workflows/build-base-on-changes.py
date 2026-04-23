@@ -34,6 +34,10 @@ SNAP_FIPS_CERTIFIED_API = \
 # The snaps that need the modules-under-certification fips ppa use these recipes
 SNAP_FIPS_API = \
     'https://api.launchpad.net/devel/~fips-cc-stig/fips-cc-stig/+snap/core{}-fips'
+# These are temporary until snapd 2.75 is RSUed
+SNAP_API_CORE26_RISCV = 'https://api.launchpad.net/devel/~ubuntu-core-service/+snap/core26-riscv64'
+SNAP_CLOUD_INIT_API_CORE26_RISCV = \
+    'https://api.launchpad.net/devel/~ubuntu-core-service/+snap/core26-riscv64-cloud-init'
 
 
 _logger = logging.getLogger('ubuntu-image')
@@ -296,19 +300,58 @@ def remove_tag(tag):
     subprocess.run(['git', 'tag', '--delete', tag], check=True)
 
 
-# Builds in lp the snap recipe and downloads the built snaps to output_dir,
-# unless dry_run is set, as in that case the function only prints a message.
+# Builds the riscv64 variant for core26, that has an extra assumes in
+# snapcraft.yaml. This is a workaround for LP#2150052 and should be removed
+# after snapd 2.75 is SRUed.
+def handle_riscv_build(lp, build_variant, output_dir):
+    # core26 will include cloud-init only if the LP recipe name finishes with
+    # "-cloud-init". We also use different branches in the recipes, but that is
+    # only to avoid a possible race condition if both regular and cloud-init
+    # variants are built at the same time (we prevent pushing a branch with the
+    # same name at the same time, which might be an issue).
+    recipe = SNAP_API_CORE26_RISCV
+    # Avoid matching core* so protection rules do not apply
+    riscv_branch = 'riscv64-core26'
+    if build_variant == "cloud-init":
+        recipe = SNAP_CLOUD_INIT_API_CORE26_RISCV
+        riscv_branch = 'riscv64-core26-cloud-init'
+
+    # Enable the assumes we want for riscv64.
+
+    snapcraft_f = 'snapcraft.yaml'
+
+    with open(snapcraft_f, 'r') as sc_file:
+        snapcraft_c = sc_file.read()
+
+    snapcraft_c = snapcraft_c.replace('## - isa-riscv64-rva23', '- isa-riscv64-rva23')
+
+    with open(snapcraft_f, 'w') as sc_file:
+        sc_file.write(snapcraft_c)
+
+    # Commit the change and force push to the branch used by the recipes.
+
+    # need to set user for the commit
+    subprocess.run(['git', 'config', '--global', 'user.email', 'core@canonical.com'], check=True)
+    subprocess.run(['git', 'config', '--global', 'user.name', 'UbuntuCore'], check=True)
+    # don't really care if deleting the old branch fails
+    subprocess.run(['git', 'branch', '-D', riscv_branch])
+    subprocess.run(['git', 'checkout', '-b', riscv_branch], check=True)
+    subprocess.run(['git', 'add', snapcraft_f], check=True)
+    subprocess.run(['git', 'commit', '-m', 'Enable riscv64 specific assumes'], check=True)
+    subprocess.run(['git', 'push', '--force', 'origin', riscv_branch], check=True)
+
+    return build_and_download(lp, recipe, output_dir)
+
+
+# Builds in lp the snap recipe and downloads the built snaps to output_dir.
 # Returns success of the operation.
-def build_and_download(lp, snap, branch, build_variant, output_dir, dry_run):
-    tag = get_build_tag(branch, build_variant)
-    if dry_run:
-        print('Would trigger new snap builds for {}, with tag {}.'.format(
-            snap.name, tag))
-        return True
-    print('Triggering new snap build of {}, with tag {}.'.format(
-        snap.name, tag))
-    subprocess.run(['git', 'tag', tag], check=True)
-    subprocess.run(['git', 'push', 'origin', tag], check=True)
+def build_and_download(lp, recipe, output_dir):
+    print('building snap recipe', recipe)
+    snap = lp.load(recipe)
+    # Move on only if the snap is not building already
+    if is_build_running(snap):
+        print('previous build is still running!!')
+        return False
 
     # We use all the defaults of the snap recipe
     request = snap.requestBuilds(
@@ -327,8 +370,7 @@ def build_and_download(lp, snap, branch, build_variant, output_dir, dry_run):
 
         if request.status == 'Failed':
             print('Cannot start builds, request failed')
-            remove_tag(tag)
-            sys.exit(1)
+            return False
         # Must be 'Completed'
         print('Request builds sucessful')
         break
@@ -356,19 +398,13 @@ def build_and_download(lp, snap, branch, build_variant, output_dir, dry_run):
         break
 
     # Check state
-    success = True
     for b in builds.entries:
         if b['buildstate'] != 'Successfully built':
             print('Error for {}: {} ({})'.format(
                 b['title'], b['buildstate'], b['web_link']))
-            success = False
+            return False
 
-    if success:
-        success = download_snaps(lp, builds, output_dir)
-    else:
-        remove_tag(tag)
-
-    return success
+    return download_snaps(lp, builds, output_dir)
 
 
 def main():
@@ -440,11 +476,6 @@ def main():
             recipe_tmpl = SNAP_FIPS_API
 
     recipe = recipe_tmpl.format(args.core_series)
-    print('building snap recipe', recipe)
-    snap = lp.load(recipe)
-    # Move on only if the snap is not building already
-    if is_build_running(snap):
-        return 0
 
     # Archive downloads can be a bit flaky, use a timeout so we do not need to
     # wait too much to do a retry. See check_packages_changed retry code.
@@ -453,6 +484,7 @@ def main():
     branch_proc = subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
                                  check=True, stdout=subprocess.PIPE)
     branch = branch_proc.stdout.decode("utf-8").rstrip()
+    tag = get_build_tag(branch, args.build_variant)
 
     # policies are called to determine if we need to trigger a build
     policies = []
@@ -466,9 +498,22 @@ def main():
         if not policy():
             continue
 
-        if not build_and_download(lp, snap, branch, args.build_variant,
-                                  args.output_dir, args.dry_run):
+        if args.dry_run:
+            print('Would trigger new snap builds for core{}, with tag {}.'.format(
+                args.core_series, tag))
+            return ret
+
+        print('Triggering new snap build of core{}, with tag {}.'.format(args.core_series, tag))
+        subprocess.run(['git', 'tag', tag], check=True)
+        subprocess.run(['git', 'push', 'origin', tag], check=True)
+
+        if not build_and_download(lp, recipe, args.output_dir):
             ret = 1
+        if ret == 0 and args.core_series == '26':
+            if not handle_riscv_build(lp, args.build_variant, args.output_dir):
+                ret = 1
+        if ret == 1:
+            remove_tag(tag)
         break
 
     return ret
