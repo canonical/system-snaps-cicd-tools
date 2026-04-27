@@ -145,9 +145,12 @@ get_old_manifest()
             fi
             if ! UBUNTU_STORE_ARCH="$arch" \
                  snap download --channel="$track/${channel#*/}" "$snap_n"; then
-                # Last try with a different arch
-                UBUNTU_STORE_ARCH=amd64 \
-                                 snap download --channel="$channel" "$snap_n"
+                # Now try with amd64
+                if ! UBUNTU_STORE_ARCH=amd64 \
+                     snap download --channel="$channel" "$snap_n"; then
+                    # Final try with amd64 from previous release
+                    UBUNTU_STORE_ARCH=amd64 snap download --channel="$track/${channel#*/}" "$snap_n"
+                fi
             fi
         fi
         unsquashfs "$snap_n"_*.snap snap/manifest.yaml
