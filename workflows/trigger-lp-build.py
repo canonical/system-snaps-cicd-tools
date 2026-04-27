@@ -208,6 +208,10 @@ def main(argv):
         elif series == "bionic":
             # 6.0 onwards does not support i386, that we publish for core18
             snapcraft_channel = "5.x/stable"
+        elif series == "resolute":
+            # XXX temporary workaround!! remove as soon as a snapcraft with
+            # full support for core26 is released.
+            snapcraft_channel = "latest/edge/early-core26"
         else:
             snapcraft_channel = "latest/stable"
     print("Will build using snapcraft from channel: {}".format(
