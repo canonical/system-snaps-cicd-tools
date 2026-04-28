@@ -820,7 +820,17 @@ cache_snaps(){
     # Download each of the snaps we want to pre-cache. Note that `snap download`
     # a quick no-op if the file is complete.
     for snap_name in "$@"; do
-        snap download "$snap_name"
+        case "$snap_name" in
+            # TODO_UC26RELEASE: Cannot have a non devel snaps for
+            # core26 base yet, which means cannot be promoted. Which
+            # means it has to be edge.
+            test-snapd-sh-core26)
+                snap download --edge "$snap_name"
+                ;;
+            *)
+                snap download "$snap_name"
+                ;;
+        esac
 
         # Copy all of the snaps back to the spool directory. From there we
         # will reuse them during subsequent `snap install` operations.
