@@ -680,6 +680,8 @@ EOF
     cat > "$IMAGE_HOME/prep-reflash.sh" << EOF
 #!/bin/sh -ex
 mount -t tmpfs none /tmp
+mount -t proc proc /proc
+
 cp /bin/busybox /tmp
 cp $IMAGE_HOME/reflash.sh /tmp
 cp $IMAGE_HOME/$IMAGE /tmp
