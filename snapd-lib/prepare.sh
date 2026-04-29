@@ -369,7 +369,7 @@ setup_reflash_magic() {
     # XXX: we get "error: too early for operation, device not yet
     # seeded or device model not acknowledged" here sometimes. To
     # understand that better show some debug output.
-    snap changes
+    snap changes || true
     snap tasks --last=seed || true
     journalctl -u snapd
     snap model --verbose
@@ -729,8 +729,6 @@ prepare_ubuntu_core() {
         setup_reflash_magic
         REBOOT
     fi
-
-    setup_snapd_proxy "$restart_snapd"
 
     disable_journald_rate_limiting
     disable_journald_start_limiting
