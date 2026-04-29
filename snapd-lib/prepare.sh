@@ -721,13 +721,15 @@ prepare_ubuntu_core() {
     # Configure the proxy in the system when it is required
     setup_system_proxy
 
+    restart_snapd=true
+    setup_snapd_proxy "$restart_snapd"
+
     # we are still a "classic" image, prepare the surgery
     if [ -e /var/lib/dpkg/status ]; then
         setup_reflash_magic
         REBOOT
     fi
 
-    restart_snapd=true
     setup_snapd_proxy "$restart_snapd"
 
     disable_journald_rate_limiting
