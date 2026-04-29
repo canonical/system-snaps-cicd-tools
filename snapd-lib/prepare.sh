@@ -165,7 +165,13 @@ EOF
 #!/bin/sh
 set -e
 # ensure we don't enable ssh in install mode or spread will get confused
-if ! grep -E 'snapd_recovery_mode=(run|recover)' /proc/cmdline; then
+# We look at modeenv as that is authoritative if installing from the initramfs.
+if [ -f /var/lib/snapd/modeenv ]; then
+    if ! grep -E '^mode=(run|recover)$' /var/lib/snapd/modeenv; then
+        echo "not in run or recovery mode - script not running"
+        exit 0
+    fi
+elif ! grep -E 'snapd_recovery_mode=(run|recover)' /proc/cmdline; then
     echo "not in run or recovery mode - script not running"
     exit 0
 fi
@@ -363,7 +369,7 @@ setup_reflash_magic() {
     # XXX: we get "error: too early for operation, device not yet
     # seeded or device model not acknowledged" here sometimes. To
     # understand that better show some debug output.
-    snap changes
+    snap changes || true
     snap tasks --last=seed || true
     journalctl -u snapd
     snap model --verbose
@@ -463,7 +469,7 @@ setup_reflash_magic() {
         # so for now, don't include snapd.debug=1, but eventually it would be
         # nice to have this on
 
-        if [ "$SPREAD_BACKEND" = "google" ]; then
+        if [ "$SPREAD_BACKEND" = "google" ] || [ "$SPREAD_BACKEND" =~ openstack ]; then
             # the default console settings for snapd aren't super useful in GCE,
             # instead it's more useful to have all console go to ttyS0 which we
             # can read more easily than tty1 for example
@@ -680,6 +686,8 @@ EOF
     cat > "$IMAGE_HOME/prep-reflash.sh" << EOF
 #!/bin/sh -ex
 mount -t tmpfs none /tmp
+mount -t proc proc /proc
+
 cp /bin/busybox /tmp
 cp $IMAGE_HOME/reflash.sh /tmp
 cp $IMAGE_HOME/$IMAGE /tmp
@@ -713,14 +721,14 @@ prepare_ubuntu_core() {
     # Configure the proxy in the system when it is required
     setup_system_proxy
 
+    restart_snapd=true
+    setup_snapd_proxy "$restart_snapd"
+
     # we are still a "classic" image, prepare the surgery
     if [ -e /var/lib/dpkg/status ]; then
         setup_reflash_magic
         REBOOT
     fi
-
-    restart_snapd=true
-    setup_snapd_proxy "$restart_snapd"
 
     disable_journald_rate_limiting
     disable_journald_start_limiting
@@ -818,7 +826,17 @@ cache_snaps(){
     # Download each of the snaps we want to pre-cache. Note that `snap download`
     # a quick no-op if the file is complete.
     for snap_name in "$@"; do
-        snap download "$snap_name"
+        case "$snap_name" in
+            # TODO_UC26RELEASE: Cannot have a non devel snaps for
+            # core26 base yet, which means cannot be promoted. Which
+            # means it has to be edge.
+            test-snapd-sh-core26)
+                snap download --edge "$snap_name"
+                ;;
+            *)
+                snap download "$snap_name"
+                ;;
+        esac
 
         # Copy all of the snaps back to the spool directory. From there we
         # will reuse them during subsequent `snap install` operations.
