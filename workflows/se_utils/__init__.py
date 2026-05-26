@@ -16,9 +16,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import atexit
+import os
+import shutil
+import ssl
 import sys
 import time
-import os
+import urllib.request
 import yaml
 from shutil import rmtree
 from launchpadlib.credentials import RequestTokenAuthorizationEngine
@@ -33,6 +36,8 @@ class LaunchpadVote():
 
 
 ACCESS_TOKEN_POLL_TIME = 10
+DOWNLOAD_TIMEOUT = 60
+DOWNLOAD_RETRIES = 3
 WAITING_FOR_USER = """Open this link:
 {}
 to authorize this program to access Launchpad on your behalf.
@@ -154,6 +159,37 @@ def get_branch_handle_from_url(lp_handle, url):
         return lp_handle.branches.getByUrl(url=name)
 
 
+def _download_snap_url(lp_handle, public_url, path):
+    authenticated_url = public_url.replace(
+        'https://launchpad.net/', str(lp_handle._root_uri))
+    last_error = None
+
+    for attempt in range(1, DOWNLOAD_RETRIES + 1):
+        try:
+            # Keep the authenticated path first so private artifacts still work.
+            contents = lp_handle._browser.get(authenticated_url)
+            with open(path, 'wb') as out_file:
+                out_file.write(contents)
+            return
+        except Exception as ex:
+            last_error = ex
+
+        try:
+            with urllib.request.urlopen(public_url, timeout=DOWNLOAD_TIMEOUT) as response:
+                with open(path, 'wb') as out_file:
+                    shutil.copyfileobj(response, out_file)
+            return
+        except Exception as ex:
+            last_error = ex
+
+        if attempt < DOWNLOAD_RETRIES:
+            print('Could not download {} (attempt {}/{}): {} - retrying'.format(
+                public_url, attempt, DOWNLOAD_RETRIES, last_error))
+            time.sleep(attempt)
+
+    raise last_error
+
+
 def download_snap_build(lp_handle, buildUrl, destination):
     """ Download a snap build from a url to a destination.
     If the download fails, do not raise an exception, just return False.
@@ -166,19 +202,15 @@ def download_snap_build(lp_handle, buildUrl, destination):
         urls = snap_build.getFileUrls()
         if len(urls) == 0:
             raise Exception("No files found for snap build: %s" % buildUrl)
-        
+
+        os.makedirs(destination, exist_ok=True)
         for u in urls:
             if not u.endswith('.snap'):
                 continue
             print("Downloading snap from %s ..." % u)
-            if not os.path.exists(destination):
-                os.makedirs(destination)
             path = os.path.join(destination, os.path.basename(u))
-            # reuse credentials from launchpadlib to download the snap
-            contents = lp_handle._browser.get(u.replace("https://launchpad.net/", str(lp_handle._root_uri)))
-            with open(path, "wb") as out_file:
-                out_file.write(contents)
-    except HTTPError as ex:
+            _download_snap_url(lp_handle, u, path)
+    except (HTTPError, OSError, ssl.SSLError) as ex:
         print("Could not retrieve snap for {}"
                 " (was there an LP timeout?): {}".format(buildUrl, ex))
         return False
