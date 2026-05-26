@@ -36,7 +36,6 @@ class LaunchpadVote():
 
 
 ACCESS_TOKEN_POLL_TIME = 10
-DOWNLOAD_TIMEOUT = 300
 DOWNLOAD_COOLDOWN_TIME = 30
 DOWNLOAD_RETRIES = 3
 WAITING_FOR_USER = """Open this link:
@@ -176,7 +175,7 @@ def _download_snap_url(lp_handle, public_url, path):
             last_error = ex
 
         try:
-            with urllib.request.urlopen(public_url, timeout=DOWNLOAD_TIMEOUT) as response:
+            with urllib.request.urlopen(public_url) as response:
                 with open(path, 'wb') as out_file:
                     shutil.copyfileobj(response, out_file)
             return
