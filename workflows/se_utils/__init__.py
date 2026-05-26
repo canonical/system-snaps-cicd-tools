@@ -36,7 +36,8 @@ class LaunchpadVote():
 
 
 ACCESS_TOKEN_POLL_TIME = 10
-DOWNLOAD_TIMEOUT = 60
+DOWNLOAD_TIMEOUT = 300
+DOWNLOAD_COOLDOWN_TIME = 30
 DOWNLOAD_RETRIES = 3
 WAITING_FOR_USER = """Open this link:
 {}
@@ -185,7 +186,8 @@ def _download_snap_url(lp_handle, public_url, path):
         if attempt < DOWNLOAD_RETRIES:
             print('Could not download {} (attempt {}/{}): {} - retrying'.format(
                 public_url, attempt, DOWNLOAD_RETRIES, last_error))
-            time.sleep(attempt)
+            print('Waiting {} seconds before retrying...'.format(DOWNLOAD_COOLDOWN_TIME))
+            time.sleep(DOWNLOAD_COOLDOWN_TIME)
 
     raise last_error
 
