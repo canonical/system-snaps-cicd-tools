@@ -76,17 +76,54 @@ if [ ! -f "$changelog_file" ]; then
     exit 1
 fi
 
+# Parse the latest (first) ChangeLog entry for use as release notes.
+# Entry header format: DD/MM/YYYY, commit https://.../tree/<sha>
+release_notes=""
+entry_header=$(head -1 "$changelog_file")
+entry_date=$(printf '%s' "$entry_header" | grep -oP '^\d{2}/\d{2}/\d{4}') || true
+entry_commit=$(printf '%s' "$entry_header" | grep -oP '/tree/\K[0-9a-f]+$') || true
+
+if [ -z "$entry_date" ] || [ -z "$entry_commit" ]; then
+    printf "WARNING: could not parse ChangeLog entry header: %s\n" "$entry_header" >&2
+else
+    # Derive expected date in DD/MM/YYYY from tag (first 8 chars are YYYYMMDD)
+    tag_ymd=${tag:0:8}
+    expected_date="${tag_ymd:6:2}/${tag_ymd:4:2}/${tag_ymd:0:4}"
+    # Get the commit SHA the tag points to.
+    tag_commit=$(git rev-parse "$tag")
+
+    valid=true
+    if [ "$entry_date" != "$expected_date" ]; then
+        printf "WARNING: ChangeLog date '%s' does not match tag date '%s'\n" \
+               "$entry_date" "$expected_date" >&2
+        valid=false
+    fi
+    if [ "$entry_commit" != "$tag_commit" ]; then
+        printf "WARNING: ChangeLog commit '%s' does not match tag commit '%s'\n" \
+               "$entry_commit" "$tag_commit" >&2
+        valid=false
+    fi
+
+    if [ "$valid" = true ]; then
+        # Extract entry: lines from header until next entry header or EOF
+        release_notes=$(awk \
+            'NR > 1 && /^[0-9]{2}\/[0-9]{2}\/[0-9]{4}, commit/ { exit } { print }' \
+            "$changelog_file")
+    fi
+fi
+
 # Create the GitHub Release and attach the ChangeLog as a release asset.
-# If a release for this tag already exists (e.g. a retried run), skip creation
-# and only upload/overwrite the asset.
+# If a release for this tag already exists (e.g. a retried run), update its
+# notes and overwrite the asset.
 # The '<path>#<label>' syntax sets the asset display name to 'ChangeLog'.
 if gh release view "$tag" >& /dev/null; then
-    printf "Release for tag '%s' already exists; uploading ChangeLog only\n" "$tag"
+    printf "Release for tag '%s' already exists; updating notes and uploading ChangeLog\n" "$tag"
+    gh release edit "$tag" --notes "$release_notes"
     gh release upload "$tag" "$changelog_file#ChangeLog" --clobber
 else
     printf "Creating GitHub Release for tag '%s'\n" "$tag"
     gh release create "$tag" \
         --title "$tag" \
-        --notes "" \
+        --notes "$release_notes" \
         "$changelog_file#ChangeLog"
 fi
