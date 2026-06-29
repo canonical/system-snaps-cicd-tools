@@ -28,6 +28,11 @@ inputs:
     required: false
     type: string
     default: regular
+  upload-changelog:
+    description: Whether to create a GitHub Release and upload the ChangeLog
+    required: false
+    type: boolean
+    default: true
 
 outputs:
   snap_name:
@@ -119,7 +124,7 @@ runs:
         path: ${{ runner.temp }}/${{ steps.release.outputs.snap_name }}_*.snap
     - name: Create GitHub Release and upload ChangeLog
       # Requires the calling workflow to have: permissions: contents: write
-      if: ${{ steps.release.outputs.snap_name != '' && steps.release.outputs.build_tag != '' }}
+      if: ${{ steps.release.outputs.snap_name != '' && steps.release.outputs.build_tag != '' && inputs.upload-changelog }}
       shell: bash
       run: |
         ./cicd/workflows/github-release.sh \
