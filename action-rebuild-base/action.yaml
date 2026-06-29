@@ -36,6 +36,9 @@ outputs:
   snap_artifact:
     description: Artifact basename used for uploaded snaps
     value: ${{ steps.release.outputs.snap_artifact }}
+  build_tag:
+    description: Git tag created for this build (empty when no build was triggered)
+    value: ${{ steps.release.outputs.build_tag }}
 
 runs:
   using: "composite"
@@ -99,12 +102,30 @@ runs:
 
         echo "snap_name=$SNAP_NAME" >> "$GITHUB_OUTPUT"
         echo "snap_artifact=$SNAP_ARTIFACT" >> "$GITHUB_OUTPUT"
+
+        # Capture the git tag created by build-base-on-changes.py (if a build
+        # was triggered). The tag follows the pattern YYYYMMDD_<branch>+<variant>
+        # or YYYYMMDD-<seq>_<branch>+<variant> for same-day retries.
+        BUILD_TAG=
+        if [ -n "$SNAP_NAME" ]; then
+            BUILD_TAG=$(git tag --points-at HEAD | grep -E '^[0-9]{8}(-[0-9]+)?_' | head -1 || true)
+        fi
+        echo "build_tag=$BUILD_TAG" >> "$GITHUB_OUTPUT"
     - name: Upload artifacts
       if: ${{ steps.release.outputs.snap_name != '' }}
       uses: actions/upload-artifact@v4
       with:
         name: ${{ steps.release.outputs.snap_artifact }}-snaps
         path: ${{ runner.temp }}/${{ steps.release.outputs.snap_name }}_*.snap
+    - name: Create GitHub Release and upload ChangeLog
+      # Requires the calling workflow to have: permissions: contents: write
+      if: ${{ steps.release.outputs.snap_name != '' && steps.release.outputs.build_tag != '' }}
+      shell: bash
+      run: |
+        ./cicd/workflows/github-release.sh \
+            "${{ runner.temp }}" \
+            "${{ steps.release.outputs.snap_name }}" \
+            "${{ steps.release.outputs.build_tag }}"
     - name: Publish the snaps to edge channel
       if: ${{ steps.release.outputs.snap_name != '' && inputs.publish }}
       shell: bash
