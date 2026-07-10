@@ -298,8 +298,8 @@ main()
         exit 1
     fi
 
-    snap_name=$(yq .name "$snapcraft_yaml_path")
-    current_version=$(yq .version "$snapcraft_yaml_path")
+    snap_name=$(yq -r .name "$snapcraft_yaml_path")
+    current_version=$(yq -r .version "$snapcraft_yaml_path")
     version=${current_version%%-dev}
     next_minor=$((${version##*-} + 1))
     # Next version can be forced externally to something else
