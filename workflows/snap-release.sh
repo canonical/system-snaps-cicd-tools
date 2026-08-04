@@ -373,7 +373,15 @@ main()
     # Run CI tests for core18+, using the just built snap
     if [ "$base" != core ]; then
         cp "$build_d"/"$snap_name"_*_amd64.snap .
-        spread openstack:
+
+        # Use yq to detect if there is an backends.openstack key, otherwise we run
+        # the google backend
+        for sp_backend in openstack-ext openstack google; do
+            if yq -e ".backends.\"$sp_backend\"" ./spread.yaml >/dev/null; then
+                spread "$sp_backend":
+                break
+            fi
+        done
     fi
 
     # Commit changes to release branch (version in yaml and changelog)
