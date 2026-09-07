@@ -66,13 +66,14 @@ runs:
       id: release
       shell: bash
       env:
+        BUILD_VARIANT: ${{ inputs.build-variant }}
         BUILD_ARCHITECTURES: ${{ inputs.architectures }}
         OPTIONAL_ARCHITECTURES: ${{ inputs.optional-architectures }}
         SNAPCRAFT_CHANNEL: ${{ inputs.snapcraft_channel }}
+        BRANCH: ${{ inputs.branch }}
       run: |
         set -x
-        printf "Releasing from %s\n" "${{ inputs.branch }}"
-        BUILD_VARIANT=${{ inputs.build-variant }}
+        echo "Releasing from $BRANCH"
         OUTPUT_DIR="${{ runner.temp }}/required"
         TAGINFO_FILE="${{ runner.temp }}/required/taginfo"
 
@@ -135,9 +136,10 @@ runs:
     - name: Publish the required architecture snaps to edge channel
       if: ${{ steps.release.outputs.snap_name != '' && inputs.publish }}
       shell: bash
+      env:
+        BUILD_VARIANT: ${{ inputs.build-variant }}
       run: |
         CHANNEL="latest/edge"
-        BUILD_VARIANT=${{ inputs.build-variant }}
         if [ "$BUILD_VARIANT" = fips ]; then
           CHANNEL="fips-updates/edge"
         elif [ "$BUILD_VARIANT" = cloud-init ]; then
@@ -152,13 +154,14 @@ runs:
       continue-on-error: true
       shell: bash
       env:
+        BUILD_VARIANT: ${{ inputs.build-variant }}
         BUILD_ARCHITECTURES: ${{ inputs.architectures }}
         OPTIONAL_ARCHITECTURES: ${{ inputs.optional-architectures }}
         SNAPCRAFT_CHANNEL: ${{ inputs.snapcraft_channel }}
+        BRANCH: ${{ inputs.branch }}
       run: |
         set -x
-        printf "Releasing optional architectures from %s\n" "${{ inputs.branch }}"
-        BUILD_VARIANT=${{ inputs.build-variant }}
+        echo "Releasing optional architectures from $BRANCH"
         OUTPUT_DIR="${{ runner.temp }}/optional"
 
         # recreate the directory
@@ -171,7 +174,7 @@ runs:
             --build-variant="$BUILD_VARIANT" \
             --build-scope=optional \
             --force-build \
-          --debug "${{ steps.release.outputs.core_series }}" || BUILD_RET=$?
+            --debug "${{ steps.release.outputs.core_series }}" || BUILD_RET=$?
 
         shopt -s nullglob
         SNAP_NAME=
@@ -206,9 +209,10 @@ runs:
       continue-on-error: true
       if: ${{ steps.release_optional.outputs.snap_name != '' && (inputs.publish == true || inputs.publish == 'true') }}
       shell: bash
+      env:
+        BUILD_VARIANT: ${{ inputs.build-variant }}
       run: |
         CHANNEL="latest/edge"
-        BUILD_VARIANT=${{ inputs.build-variant }}
         if [ "$BUILD_VARIANT" = fips ]; then
           CHANNEL="fips-updates/edge"
         elif [ "$BUILD_VARIANT" = cloud-init ]; then
