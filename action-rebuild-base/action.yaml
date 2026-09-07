@@ -28,6 +28,11 @@ inputs:
     required: false
     type: string
     default: regular
+  optional-architectures:
+    description: Comma separated list of architectures that can fail independently
+    required: false
+    type: string
+    default: ""
 
 outputs:
   snap_name:
@@ -57,17 +62,27 @@ runs:
         repository: snapcore/system-snaps-cicd-tools
         ref: main
         path: cicd
-    - name: Release
+    - name: Release required architectures
       id: release
       shell: bash
       env:
+        BUILD_VARIANT: ${{ inputs.build-variant }}
         BUILD_ARCHITECTURES: ${{ inputs.architectures }}
+        OPTIONAL_ARCHITECTURES: ${{ inputs.optional-architectures }}
         SNAPCRAFT_CHANNEL: ${{ inputs.snapcraft_channel }}
+        BRANCH: ${{ inputs.branch }}
+        SNAP_OUTPUT_DIR: ${{ runner.temp }}/required
       run: |
         set -x
-        printf "Releasing from %s\n" branch "${{ inputs.branch }}"
-        BUILD_VARIANT=${{ inputs.build-variant }}
+        echo "Releasing from $BRANCH"
+        OUTPUT_DIR="$SNAP_OUTPUT_DIR"
+        TAGINFO_FILE="$SNAP_OUTPUT_DIR/taginfo"
+
+        rm -rf "$OUTPUT_DIR"
+        mkdir -p "$OUTPUT_DIR"
+        
         sudo DEBIAN_FRONTEND=noninteractive apt-get install yq -yqq
+        
         snap_name=$(yq -r .name snapcraft.yaml)
         if [ "$snap_name" = core ]; then
             series=''
@@ -75,18 +90,18 @@ runs:
             series=${snap_name#core}
         fi
 
-        ARTIFACT_SUFFIX=""
-        if [ "$BUILD_VARIANT" != regular ]; then
-            ARTIFACT_SUFFIX=-"$BUILD_VARIANT"
-        fi
-
-        ./cicd/workflows/build-base-on-changes.py --output-dir="${{ runner.temp }}" --build-variant="$BUILD_VARIANT" --debug "$series"
+        ./cicd/workflows/build-base-on-changes.py \
+            --output-dir="$OUTPUT_DIR" \
+            --build-variant="$BUILD_VARIANT" \
+            --build-scope=required \
+            --taginfo-file="$TAGINFO_FILE" \
+            --debug "$series"
 
         # TODO run spread tests on built snaps before publishing
 
         shopt -s nullglob
         SNAP_NAME=
-        for s in "${{ runner.temp }}"/*_*.snap; do
+        for s in "$OUTPUT_DIR"/*_*.snap; do
             s=${s##*/}
             SNAP_NAME=${s%%_*}
             break
@@ -95,27 +110,117 @@ runs:
         if [ -z "$SNAP_NAME" ]; then
             printf "No build has been triggered\n"
         fi
+
+        # construct the snap artifact name
+        ARTIFACT_SUFFIX=""
+        if [ "$BUILD_VARIANT" != regular ]; then
+            ARTIFACT_SUFFIX=-"$BUILD_VARIANT"
+        fi
         SNAP_ARTIFACT="$SNAP_NAME""$ARTIFACT_SUFFIX"
+        
+        # read the taginfo for output
+        RELEASE_TAG=""
+        if [ -s "$TAGINFO_FILE" ]; then
+            RELEASE_TAG=$(cat "$TAGINFO_FILE")
+        fi
 
         echo "snap_name=$SNAP_NAME" >> "$GITHUB_OUTPUT"
         echo "snap_artifact=$SNAP_ARTIFACT" >> "$GITHUB_OUTPUT"
+        echo "core_series=$series" >> "$GITHUB_OUTPUT"
+        echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
     - name: Upload artifacts
       if: ${{ steps.release.outputs.snap_name != '' }}
       uses: actions/upload-artifact@v4
       with:
         name: ${{ steps.release.outputs.snap_artifact }}-snaps
-        path: ${{ runner.temp }}/${{ steps.release.outputs.snap_name }}_*.snap
-    - name: Publish the snaps to edge channel
+        path: ${{ runner.temp }}/required/${{ steps.release.outputs.snap_name }}_*.snap
+    - name: Publish the required architecture snaps to edge channel
       if: ${{ steps.release.outputs.snap_name != '' && inputs.publish }}
       shell: bash
+      env:
+        BUILD_VARIANT: ${{ inputs.build-variant }}
+        SNAP_OUTPUT_DIR: ${{ runner.temp }}/required
       run: |
         CHANNEL="latest/edge"
-        BUILD_VARIANT=${{ inputs.build-variant }}
         if [ "$BUILD_VARIANT" = fips ]; then
           CHANNEL="fips-updates/edge"
         elif [ "$BUILD_VARIANT" = cloud-init ]; then
           CHANNEL="cloud-init/edge"
         fi
 
-        ./cicd/workflows/snap-publish.sh "${{ runner.temp }}" \
+        ./cicd/workflows/snap-publish.sh "$SNAP_OUTPUT_DIR" \
             ${{ steps.release.outputs.snap_name }} $CHANNEL
+    - name: Release optional architectures
+      id: release_optional
+      if: ${{ inputs.optional-architectures != '' && steps.release.outputs.release_tag != '' }}
+      continue-on-error: true
+      shell: bash
+      env:
+        BUILD_VARIANT: ${{ inputs.build-variant }}
+        BUILD_ARCHITECTURES: ${{ inputs.architectures }}
+        OPTIONAL_ARCHITECTURES: ${{ inputs.optional-architectures }}
+        SNAPCRAFT_CHANNEL: ${{ inputs.snapcraft_channel }}
+        BRANCH: ${{ inputs.branch }}
+        SNAP_OUTPUT_DIR: ${{ runner.temp }}/optional
+      run: |
+        set -x
+        echo "Releasing optional architectures from $BRANCH"
+        OUTPUT_DIR="$SNAP_OUTPUT_DIR"
+
+        # recreate the directory
+        rm -rf "$OUTPUT_DIR"
+        mkdir -p "$OUTPUT_DIR"
+
+        BUILD_RET=0
+        ./cicd/workflows/build-base-on-changes.py \
+            --output-dir="$OUTPUT_DIR" \
+            --build-variant="$BUILD_VARIANT" \
+            --build-scope=optional \
+            --force-build \
+            --debug "${{ steps.release.outputs.core_series }}" || BUILD_RET=$?
+
+        shopt -s nullglob
+        SNAP_NAME=
+        for s in "$OUTPUT_DIR"/*_*.snap; do
+            s=${s##*/}
+            SNAP_NAME=${s%%_*}
+            break
+        done
+        shopt -u nullglob
+        if [ -z "$SNAP_NAME" ]; then
+            printf "No optional architecture build has been triggered\n"
+        fi
+
+        # construct the snap artifact name
+        ARTIFACT_SUFFIX=""
+        if [ "$BUILD_VARIANT" != regular ]; then
+            ARTIFACT_SUFFIX=-"$BUILD_VARIANT"
+        fi
+        SNAP_ARTIFACT="$SNAP_NAME""$ARTIFACT_SUFFIX"-optional
+
+        echo "snap_name=$SNAP_NAME" >> "$GITHUB_OUTPUT"
+        echo "snap_artifact=$SNAP_ARTIFACT" >> "$GITHUB_OUTPUT"
+        exit "$BUILD_RET"
+    - name: Upload optional architecture artifacts
+      continue-on-error: true
+      if: ${{ steps.release_optional.outputs.snap_name != '' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.release_optional.outputs.snap_artifact }}-snaps
+        path: ${{ runner.temp }}/optional/${{ steps.release_optional.outputs.snap_name }}_*.snap
+    - name: Publish the optional architecture snaps to edge channel
+      continue-on-error: true
+      if: ${{ steps.release_optional.outputs.snap_name != '' && (inputs.publish == true || inputs.publish == 'true') }}
+      shell: bash
+      env:
+        BUILD_VARIANT: ${{ inputs.build-variant }}
+      run: |
+        CHANNEL="latest/edge"
+        if [ "$BUILD_VARIANT" = fips ]; then
+          CHANNEL="fips-updates/edge"
+        elif [ "$BUILD_VARIANT" = cloud-init ]; then
+          CHANNEL="cloud-init/edge"
+        fi
+
+        ./cicd/workflows/snap-publish.sh "${{ runner.temp }}/optional" \
+            ${{ steps.release_optional.outputs.snap_name }} $CHANNEL
