@@ -71,11 +71,12 @@ runs:
         OPTIONAL_ARCHITECTURES: ${{ inputs.optional-architectures }}
         SNAPCRAFT_CHANNEL: ${{ inputs.snapcraft_channel }}
         BRANCH: ${{ inputs.branch }}
+        SNAP_OUTPUT_DIR: ${{ runner.temp }}/required
       run: |
         set -x
         echo "Releasing from $BRANCH"
-        OUTPUT_DIR="${{ runner.temp }}/required"
-        TAGINFO_FILE="${{ runner.temp }}/required/taginfo"
+        OUTPUT_DIR="$SNAP_OUTPUT_DIR"
+        TAGINFO_FILE="$SNAP_OUTPUT_DIR/taginfo"
 
         rm -rf "$OUTPUT_DIR"
         mkdir -p "$OUTPUT_DIR"
@@ -138,6 +139,7 @@ runs:
       shell: bash
       env:
         BUILD_VARIANT: ${{ inputs.build-variant }}
+        SNAP_OUTPUT_DIR: ${{ runner.temp }}/required
       run: |
         CHANNEL="latest/edge"
         if [ "$BUILD_VARIANT" = fips ]; then
@@ -146,7 +148,7 @@ runs:
           CHANNEL="cloud-init/edge"
         fi
 
-        ./cicd/workflows/snap-publish.sh "${{ runner.temp }}/required" \
+        ./cicd/workflows/snap-publish.sh "$SNAP_OUTPUT_DIR" \
             ${{ steps.release.outputs.snap_name }} $CHANNEL
     - name: Release optional architectures
       id: release_optional
@@ -159,10 +161,11 @@ runs:
         OPTIONAL_ARCHITECTURES: ${{ inputs.optional-architectures }}
         SNAPCRAFT_CHANNEL: ${{ inputs.snapcraft_channel }}
         BRANCH: ${{ inputs.branch }}
+        SNAP_OUTPUT_DIR: ${{ runner.temp }}/optional
       run: |
         set -x
         echo "Releasing optional architectures from $BRANCH"
-        OUTPUT_DIR="${{ runner.temp }}/optional"
+        OUTPUT_DIR="$SNAP_OUTPUT_DIR"
 
         # recreate the directory
         rm -rf "$OUTPUT_DIR"
