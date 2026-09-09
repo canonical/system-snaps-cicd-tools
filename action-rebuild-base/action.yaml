@@ -62,6 +62,10 @@ runs:
         repository: snapcore/system-snaps-cicd-tools
         ref: main
         path: cicd
+    - name: Install CVE scanner
+      shell: bash
+      run: |
+        sudo snap install review-tools
     - name: Release required architectures
       id: release
       shell: bash
@@ -134,6 +138,21 @@ runs:
       with:
         name: ${{ steps.release.outputs.snap_artifact }}-snaps
         path: ${{ runner.temp }}/required/${{ steps.release.outputs.snap_name }}_*.snap
+    - name: cve scan the required snaps
+      if: ${{ steps.release.outputs.snap_name != '' }}
+      shell: bash
+      run: |
+        shopt -s nullglob
+        for snap in "${{ runner.temp }}/required/${{ steps.release.outputs.snap_name }}_"*.snap; do
+            # this produces a table of detected CVEs and their severity
+            review-tools.scan-snap "$snap" > "${snap%.snap}-cve-scan.txt"
+        done
+        shopt -u nullglob
+    - uses: actions/upload-artifact@v4
+      if: ${{ steps.release.outputs.snap_name != '' }}
+      with:
+        name: cve-scan-${{ steps.release.outputs.snap_artifact }}
+        path: "${{ runner.temp }}/required/${{ steps.release.outputs.snap_name }}_*-cve-scan.txt"
     - name: Publish the required architecture snaps to edge channel
       if: ${{ steps.release.outputs.snap_name != '' && inputs.publish }}
       shell: bash
@@ -208,6 +227,23 @@ runs:
       with:
         name: ${{ steps.release_optional.outputs.snap_artifact }}-snaps
         path: ${{ runner.temp }}/optional/${{ steps.release_optional.outputs.snap_name }}_*.snap
+    - name: cve scan the optional snaps
+      continue-on-error: true
+      if: ${{ steps.release_optional.outputs.snap_name != '' }}
+      shell: bash
+      run: |
+        shopt -s nullglob
+        for snap in "${{ runner.temp }}/optional/${{ steps.release_optional.outputs.snap_name }}_"*.snap; do
+            # this produces a table of detected CVEs and their severity
+            review-tools.scan-snap "$snap" > "${snap%.snap}-cve-scan.txt"
+        done
+        shopt -u nullglob
+    - uses: actions/upload-artifact@v4
+      continue-on-error: true
+      if: ${{ steps.release_optional.outputs.snap_name != '' }}
+      with:
+        name: cve-scan-${{ steps.release_optional.outputs.snap_artifact }}
+        path: "${{ runner.temp }}/optional/${{ steps.release_optional.outputs.snap_name }}_*-cve-scan.txt"
     - name: Publish the optional architecture snaps to edge channel
       continue-on-error: true
       if: ${{ steps.release_optional.outputs.snap_name != '' && (inputs.publish == true || inputs.publish == 'true') }}
