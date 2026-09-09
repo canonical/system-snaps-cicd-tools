@@ -191,6 +191,24 @@ def _download_snap_url(lp_handle, public_url, path):
     raise last_error
 
 
+def _get_snap_build_file_urls(lp_handle, build_url):
+    last_error = None
+    for attempt in range(1, DOWNLOAD_RETRIES + 1):
+        try:
+            snap_build = lp_handle.load(build_url)
+            return snap_build.getFileUrls()
+        except Exception as ex:
+            last_error = ex
+            if attempt < DOWNLOAD_RETRIES:
+                print('Could not retrieve files for {} (attempt {}/{}): {} - retrying'.format(
+                    build_url, attempt, DOWNLOAD_RETRIES, last_error))
+                print('Waiting {} seconds before retrying...'.format(
+                    DOWNLOAD_COOLDOWN_TIME))
+                time.sleep(DOWNLOAD_COOLDOWN_TIME)
+
+    raise last_error
+
+
 def download_snap_build(lp_handle, buildUrl, destination):
     """ Download a snap build from a url to a destination.
     If the download fails, do not raise an exception, just return False.
@@ -199,8 +217,7 @@ def download_snap_build(lp_handle, buildUrl, destination):
     :return: True if the download was successful, False otherwise
     """
     try:
-        snap_build = lp_handle.load(buildUrl)
-        urls = snap_build.getFileUrls()
+        urls = _get_snap_build_file_urls(lp_handle, buildUrl)
         if len(urls) == 0:
             raise Exception("No files found for snap build: %s" % buildUrl)
 

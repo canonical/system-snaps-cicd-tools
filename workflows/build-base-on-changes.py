@@ -34,6 +34,8 @@ SNAP_FIPS_CERTIFIED_API = \
 # The snaps that need the modules-under-certification fips ppa use these recipes
 SNAP_FIPS_API = \
     'https://api.launchpad.net/devel/~fips-cc-stig/fips-cc-stig/+snap/core{}-fips'
+SNAP_BASE_API = 'https://api.launchpad.net/devel/+snap-bases/{}'
+DISTRO_ARCH_SERIES_API = 'https://api.launchpad.net/devel/ubuntu/{}/{}'
 # These are temporary until snapd 2.75 is RSUed
 SNAP_API_CORE26_RISCV = 'https://api.launchpad.net/devel/~ubuntu-core-service/+snap/core26-riscv64'
 SNAP_CLOUD_INIT_API_CORE26_RISCV = \
@@ -294,6 +296,13 @@ def download_snaps(lp, builds, output_dir):
     return True
 
 
+def download_snap_builds(lp, builds, output_dir):
+    for build in builds:
+        if not se_utils.download_snap_build(lp, build.self_link, output_dir):
+            return False
+    return True
+
+
 def remove_tag(tag, taginfo_file):
     _logger.debug('Removing tag {}'.format(tag))
     subprocess.run(['git', 'push', 'origin', ':'+tag], check=True)
@@ -365,32 +374,69 @@ def filter_snap_architectures(snap, architectures, excluded_architectures):
     return architectures
 
 
-# Builds in lp the snap recipe and downloads the built snaps to output_dir.
-# Returns success of the operation.
-def build_and_download(lp, recipe, output_dir, architectures=None,
-                       excluded_architectures=None):
-    print('building snap recipe', recipe)
-    snap = lp.load(recipe)
-    # Move on only if the snap is not building already
-    if is_build_running(snap):
-        print('previous build is still running!!')
-        return False
+def get_core_series_from_snap_name(snap_name):
+    if snap_name and snap_name.startswith('core'):
+        return snap_name[len('core'):]
+    return None
 
-    architectures = filter_snap_architectures(snap, architectures, excluded_architectures)
-    if architectures is not None and len(architectures) == 0:
-        print('No architectures requested, skipping build.')
-        return True
 
-    # We use all the defaults of the snap recipe
-    request_args = {
-        'archive': snap.auto_build_archive_link,
-        'pocket': snap.auto_build_pocket,
-        'channels': snap.auto_build_channels,
+def request_architecture_builds(lp, snap, architectures):
+    snap_base_name = snap.store_name
+    core_series = get_core_series_from_snap_name(snap_base_name)
+    if core_series not in series_map:
+        print('Cannot determine Ubuntu series from snap store name {}.'.format(
+            snap_base_name))
+        return None
+
+    distro_series_name = series_map[core_series]
+    snap_base_link = SNAP_BASE_API.format(snap_base_name)
+    # Match requestBuilds channel resolution: start with the snap-base defaults
+    # and then apply recipe-level auto_build_channels overrides.
+    snap_base = lp.load(snap_base_link)
+    channels = dict(snap_base.build_channels or {})
+    channels.update(snap.auto_build_channels or {})
+    channels_by_arch = channels.pop('_byarch', {})
+    builds = []
+    for architecture in architectures:
+        arch_channels = dict(channels)
+        arch_channels.update(channels_by_arch.get(architecture, {}))
+        distro_arch_series = lp.load(DISTRO_ARCH_SERIES_API.format(
+            distro_series_name, architecture))
+        request_args = {
+            'archive': snap.auto_build_archive_link,
+            'distro_arch_series': distro_arch_series,
+            'pocket': snap.auto_build_pocket,
+            'channels': arch_channels,
+            'snap_base': snap_base_link,
+        }
+        build = snap.requestBuild(**request_args)
+        print('Arch: {} is building under: {}'.format(
+            architecture, build.self_link))
+        builds.append(build)
+    return builds
+
+
+def wait_for_architecture_builds(lp, builds):
+    pending_states = {
+        'Needs building',
+        'Dependency wait',
+        'Currently building',
+        'Uploading build',
+        'Cancelling build',
+        'Gathering build output',
     }
-    if architectures:
-        print('building architectures: {}'.format(','.join(architectures)))
-        request_args['architectures'] = architectures
-    request = snap.requestBuilds(**request_args)
+    while True:
+        builds = [lp.load(build.self_link) for build in builds]
+        if not any(build.buildstate in pending_states for build in builds):
+            return builds
+        time.sleep(60)
+
+
+def request_bulk_builds(lp, snap):
+    request = snap.requestBuilds(
+        archive=snap.auto_build_archive_link,
+        pocket=snap.auto_build_pocket,
+        channels=snap.auto_build_channels)
 
     # Wait for the builds to be launched
     print('builds requested:', request.builds_collection_link)
@@ -403,11 +449,13 @@ def build_and_download(lp, recipe, output_dir, architectures=None,
 
         if request.status == 'Failed':
             print('Cannot start builds, request failed')
-            return False
+            return None
         # Must be 'Completed'
         print('Request builds sucessful')
-        break
+        return request
 
+
+def wait_for_bulk_builds(lp, request):
     # Waiting for the builds to finish
     while True:
         builds = lp.load(request.builds_collection_link)
@@ -428,16 +476,53 @@ def build_and_download(lp, recipe, output_dir, architectures=None,
             continue
 
         # No build pending
-        break
+        return builds
 
-    # Check state
-    for b in builds.entries:
-        if b['buildstate'] != 'Successfully built':
-            print('Error for {}: {} ({})'.format(
-                b['title'], b['buildstate'], b['web_link']))
+
+# Builds in lp the snap recipe and downloads the built snaps to output_dir.
+# Returns success of the operation.
+def build_and_download(lp, recipe, output_dir, architectures=None,
+                       excluded_architectures=None):
+    print('building snap recipe', recipe)
+    snap = lp.load(recipe)
+    # Move on only if the snap is not building already
+    if is_build_running(snap):
+        print('previous build is still running!!')
+        return False
+
+    architectures = filter_snap_architectures(snap, architectures, excluded_architectures)
+    if architectures is not None and len(architectures) == 0:
+        print('No architectures requested, skipping build.')
+        return True
+
+    # The supported API is requestBuild per distro_arch_series,
+    # so use individual requests for filtered builds while retaining
+    # requestBuilds for unfiltered builds.
+    if architectures:
+        print('building architectures: {}'.format(','.join(architectures)))
+        builds = request_architecture_builds(lp, snap, architectures)
+        if builds is None:
             return False
 
-    return download_snaps(lp, builds, output_dir)
+        builds = wait_for_architecture_builds(lp, builds)
+        for build in builds:
+            if build.buildstate != 'Successfully built':
+                print('Error for {}: {} ({})'.format(
+                    build.title, build.buildstate, build.web_link))
+                return False
+        return download_snap_builds(lp, builds, output_dir)
+    else:
+        # We use all the defaults of the snap recipe for unfiltered builds.
+        request = request_bulk_builds(lp, snap)
+        if request is None:
+            return False
+        builds = wait_for_bulk_builds(lp, request)
+        for b in builds.entries:
+            if b['buildstate'] != 'Successfully built':
+                print('Error for {}: {} ({})'.format(
+                    b['title'], b['buildstate'], b['web_link']))
+            return False
+        return download_snaps(lp, builds, output_dir)
 
 
 def parse_architectures(architectures):
