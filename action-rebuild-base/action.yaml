@@ -134,6 +134,11 @@ runs:
       with:
         name: ${{ steps.release.outputs.snap_artifact }}-snaps
         path: ${{ runner.temp }}/required/${{ steps.release.outputs.snap_name }}_*.snap
+    - name: Install CVE scanner
+      if: ${{ steps.release.outputs.snap_name != '' }}
+      shell: bash
+      run: |
+        sudo snap install review-tools
     - name: cve scan the required snaps
       if: ${{ steps.release.outputs.snap_name != '' }}
       shell: bash
@@ -222,11 +227,6 @@ runs:
       with:
         name: ${{ steps.release_optional.outputs.snap_artifact }}-snaps
         path: ${{ runner.temp }}/optional/${{ steps.release_optional.outputs.snap_name }}_*.snap
-    - name: Install CVE scanner
-      if: ${{ steps.release_optional.outputs.snap_name != '' }}
-      shell: bash
-      run: |
-        sudo snap install review-tools
     - name: cve scan the optional snaps
       if: ${{ steps.release_optional.outputs.snap_name != '' }}
       shell: bash
