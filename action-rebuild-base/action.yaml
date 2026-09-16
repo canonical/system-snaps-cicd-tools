@@ -149,7 +149,8 @@ runs:
             review-tools.scan-snap "$snap" > "${snap%.snap}-cve-scan.txt"
         done
         shopt -u nullglob
-    - uses: actions/upload-artifact@v4
+    - name: Upload required CVE scan results
+      uses: actions/upload-artifact@v4
       if: ${{ steps.release.outputs.snap_name != '' }}
       with:
         name: cve-scan-${{ steps.release.outputs.snap_artifact }}
@@ -237,7 +238,8 @@ runs:
             review-tools.scan-snap "$snap" > "${snap%.snap}-cve-scan.txt"
         done
         shopt -u nullglob
-    - uses: actions/upload-artifact@v4
+    - name: Upload optional CVE scan results
+      uses: actions/upload-artifact@v4
       if: ${{ steps.release_optional.outputs.snap_name != '' }}
       with:
         name: cve-scan-${{ steps.release_optional.outputs.snap_artifact }}
