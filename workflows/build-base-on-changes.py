@@ -521,7 +521,7 @@ def build_and_download(lp, recipe, output_dir, architectures=None,
             if b['buildstate'] != 'Successfully built':
                 print('Error for {}: {} ({})'.format(
                     b['title'], b['buildstate'], b['web_link']))
-            return False
+                return False
         return download_snaps(lp, builds, output_dir)
 
 
