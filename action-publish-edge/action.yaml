@@ -28,6 +28,25 @@ inputs:
     required: false
     type: string
     default: ""
+  publish:
+    description: Publish the snaps to the edge channel
+    required: false
+    type: boolean
+    # Even though publishing directly from this action does not work, leave
+    # this on by default so that other consumers are actually notified that the
+    # publishing did not succeed.
+    default: true
+
+outputs:
+  snap_name:
+    description: Name of the built snap
+    value: ${{ steps.build.outputs.snap_name }}
+  channel:
+    description: Store channel the snap is published to
+    value: ${{ steps.build.outputs.channel }}
+  artifact:
+    description: Name of the uploaded artifact containing the snaps
+    value: ${{ steps.build.outputs.artifact }}
 
 runs:
   using: "composite"
@@ -46,23 +65,40 @@ runs:
         ref: main
         path: cicd
     - name: Build snap
+      id: build
       shell: bash
       env:
         BUILD_ARCHITECTURES: ${{ inputs.architectures }}
         SNAPCRAFT_CHANNEL: ${{ inputs.snapcraft_channel }}
+        REF: ${{ github.ref_name }}
+        OVERRIDE_TRACK: ${{ inputs.track }}
       run: |
+        # Compute channel before building to fail fast
+        track=${REF##*-}
+        if [ -n "$OVERRIDE_TRACK" ]; then
+            echo "Overriding track to $OVERRIDE_TRACK"
+            track="$OVERRIDE_TRACK"
+        fi
+        if [ -z "$track" ]; then
+            printf "ERROR: no track has been specified\n"
+            exit 1
+        fi
+
         # We are inside of the checked out repo
-        ./cicd/workflows/snap-build.sh "${{ runner.temp }}"
+        ./cicd/workflows/snap-build.sh "$RUNNER_TEMP"
         for s in "${{ runner.temp }}"/*_*.snap; do
             s=${s##*/}
             SNAP_NAME=${s%%_*}
             break
         done
         echo "SNAP_NAME=$SNAP_NAME" >> $GITHUB_ENV
+        echo "snap_name=$SNAP_NAME" >> "$GITHUB_OUTPUT"
+        echo "channel=$track/edge" >> "$GITHUB_OUTPUT"
+        echo "artifact=$SNAP_NAME-snaps" >> "$GITHUB_OUTPUT"
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ env.SNAP_NAME }}-snaps
+        name: ${{ steps.build.outputs.artifact }}
         path: ${{ runner.temp }}/${{ env.SNAP_NAME }}_*.snap
     - name: Run spread tests
       # see https://github.com/actions/runner/issues/1483
@@ -93,20 +129,8 @@ runs:
             spread -discard -reuse-pid="$(printf "$r\n" | grep -o -E '[0-9]+')"
         done
     - name: Publish the snaps to edge channel
+      if: ${{ inputs.publish == true || inputs.publish == 'true' }}
       shell: bash
       run: |
-        ref=${{ github.ref_name }}
-        override_track="${{ inputs.track }}"
-        track=${ref##*-}
-
-        if [ -n "$override_track" ]; then
-            echo "Overriding track to $override_track"
-            track="$override_track"
-        fi
-
-        if [ -z "$track" ]; then
-            printf "ERROR: no track has been specified\n"
-            exit 1
-        fi
         ./cicd/workflows/snap-publish.sh "${{ runner.temp }}" \
-            "${{ env.SNAP_NAME }}" "$track"/edge
+            "${{ env.SNAP_NAME }}" "${{ steps.build.outputs.channel }}"
