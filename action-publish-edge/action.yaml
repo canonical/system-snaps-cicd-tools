@@ -132,5 +132,5 @@ runs:
       if: ${{ inputs.publish == true || inputs.publish == 'true' }}
       shell: bash
       run: |
-        ./cicd/workflows/snap-publish.sh "${{ runner.temp }}" \
-            "${{ env.SNAP_NAME }}" "${{ steps.build.outputs.channel }}"
+        echo "Publishing needs extra work: please see https://github.com/canonical/system-snaps-cicd-tools/issues/49"
+        exit 1
