@@ -1,0 +1,32 @@
+name: 'PublishSystemSnap'
+description: 'Publish already-built system snaps to a store channel'
+author: 'Guilherme Puida Moreira'
+
+inputs:
+  snap_name:
+    description: Snap name (as in snapcraft.yaml)
+    required: true
+  channel:
+    description: Store channel, e.g. 26/edge
+    required: true
+  artifact:
+    description: Name of the artifact containing the snaps (defaults to <snap_name>-snaps)
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Download snaps
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ inputs.artifact || format('{0}-snaps', inputs.snap_name) }}
+        path: ${{ runner.temp }}/snaps
+    - name: Publish snaps
+      shell: bash
+      env:
+        SNAP_NAME: ${{ inputs.snap_name }}
+        CHANNEL: ${{ inputs.channel }}
+      run: |
+        "$GITHUB_ACTION_PATH"/../workflows/snap-publish.sh \
+            "$RUNNER_TEMP/snaps" "$SNAP_NAME" "$CHANNEL"
