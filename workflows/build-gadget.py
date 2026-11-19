@@ -275,6 +275,7 @@ def wait_for_builds(lp, builds):
 def download_builds(lp, builds, output_dir):
     for build in builds:
         if not se_utils.download_snap_build(lp, build.self_link, output_dir):
+            print('Failed to download build for {}'.format(build.title), file=sys.stderr)
             return False
     return True
 
@@ -343,6 +344,7 @@ def build_gadget(args):
     if failed:
         return 1
     if not download_builds(lp, builds, args.output_dir):
+        print('Failed to download built snaps', file=sys.stderr)
         return 1
     return 0
 
