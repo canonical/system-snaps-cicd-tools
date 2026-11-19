@@ -4,19 +4,28 @@ author: 'Philip Meulengracht'
 
 inputs:
   architectures:
-    description: Comma separated list of architectures to build
+    description: >-
+      Comma separated list of architectures to build, by default all the
+      architectures that the Launchpad recipes build from the branch
     required: false
-    default: "amd64,arm64"
+    default: ""
   snapcraft_channel:
-    description: Snapcraft snap installation channel
+    description: >-
+      Snapcraft snap installation channel used by the Launchpad builds, by
+      default the one set by the Launchpad recipe
     required: false
     default: ""
   branch:
-    description: Branch to build from
+    description: >-
+      Branch to build from, this must be the branch that the Launchpad recipes
+      of the gadget build
     required: false
     default: "${{ github.ref_name }}"
   track:
-    description: Store track to publish to (defaults to the branch name)
+    description: >-
+      Store track to publish to, by default the track that the Launchpad
+      recipes release to (the series of the gadget, "latest" for the 16 series
+      pc gadget and "18-pi" for the 18 series pi gadget)
     required: false
     default: ""
   publish:
@@ -84,17 +93,26 @@ runs:
             exit 1
         fi
         
+        # an empty list builds all the architectures of the Launchpad recipes
         BUILD_ARCHITECTURES=${BUILD_ARCHITECTURES//[[:space:]]/}
-        if [[ ! "$BUILD_ARCHITECTURES" =~ ^[a-z0-9]+(,[a-z0-9]+)*$ ]]; then
+        if [ -n "$BUILD_ARCHITECTURES" ] && \
+                [[ ! "$BUILD_ARCHITECTURES" =~ ^[a-z0-9]+(,[a-z0-9]+)*$ ]]; then
           echo "Invalid architecture list: $BUILD_ARCHITECTURES" >&2
           exit 1
         fi
         
+        # The gadgets are built on Launchpad by the existing snap recipes, which
+        # also determine the store track the snaps are released to
+        track=$(./cicd/workflows/build-gadget.py \
+            --snap "$snap_name" --base "$base" --print-track)
+        
         rm -rf "$OUTPUT_DIR"
         mkdir -p "$OUTPUT_DIR"
-        build_and_download_snaps "$snap_name" \
-            "https://github.com/$GITHUB_REPOSITORY.git" "$BRANCH" "$base" \
-            "$OUTPUT_DIR" "$BUILD_ARCHITECTURES" "$SNAPCRAFT_CHANNEL"
+        ./cicd/workflows/build-gadget.py \
+            --snap "$snap_name" --base "$base" --branch "$BRANCH" \
+            --architectures "$BUILD_ARCHITECTURES" \
+            --snapcraft-channel "$SNAPCRAFT_CHANNEL" \
+            --output-dir "$OUTPUT_DIR"
         shopt -s nullglob
         
         snaps=("$OUTPUT_DIR/${snap_name}_"*.snap)
@@ -112,6 +130,7 @@ runs:
           fi
         done
         echo "snap_name=$snap_name" >> "$GITHUB_OUTPUT"
+        echo "track=$track" >> "$GITHUB_OUTPUT"
     
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
@@ -146,10 +165,10 @@ runs:
       env:
         SNAP_NAME: ${{ steps.build.outputs.snap_name }}
         TRACK: ${{ inputs.track }}
-        BRANCH: ${{ inputs.branch }}
+        DEFAULT_TRACK: ${{ steps.build.outputs.track }}
         OUTPUT_DIR: ${{ runner.temp }}/gadget
       run: |
         if [ -z "$TRACK" ]; then
-            TRACK="$BRANCH"
+            TRACK="$DEFAULT_TRACK"
         fi
         ./cicd/workflows/snap-publish.sh "$OUTPUT_DIR" "$SNAP_NAME" "$TRACK/edge"
