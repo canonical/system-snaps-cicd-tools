@@ -128,11 +128,12 @@ def select_architectures(recipes, architectures):
     supported = [a for r in recipes for a in r.architectures]
     unsupported = [a for a in architectures if a not in supported]
     if unsupported:
+        unique_supported = sorted(set(supported))
         raise BuildError('There is no Launchpad recipe for the {} gadget for '
                          'series {} that builds {} (supported architectures: '
                          '{})'.format(recipes[0].snap, recipes[0].series,
                                       ', '.join(unsupported),
-                                      ', '.join(supported)))
+                                      ', '.join(unique_supported)))
 
     selection = []
     for recipe in recipes:
@@ -253,7 +254,10 @@ def wait_for_builds(lp, builds):
             # Launchpad can time out or be briefly unavailable
             errors += 1
             if errors >= MAX_POLL_ERRORS:
-                raise
+                raise BuildError(
+                     'Could not get the state of the builds after {}/{} attempts: {}'.format(
+                         errors, MAX_POLL_ERRORS, ex)
+                 ) from ex
             print('Could not get the state of the builds ({}/{}): {}'.format(
                 errors, MAX_POLL_ERRORS, ex))
             time.sleep(POLL_INTERVAL)
